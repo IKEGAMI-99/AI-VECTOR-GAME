@@ -50,36 +50,40 @@ internal fun HomeScreen(onMode: (GameMode) -> Unit) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(11.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text("AI//VECTOR", color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-                Text("RANDOMIZED ON-DEVICE INTELLIGENCE GAME", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+            Column(Modifier.weight(1f)) {
+                Text("AI//VECTOR", color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                Text("RANDOMIZED ON-DEVICE INTELLIGENCE GAME", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.0.sp)
             }
-            Box(
-                Modifier
-                    .background(Panel2.copy(alpha = 0.78f), RoundedCornerShape(100.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Text("v${BuildConfig.VERSION_NAME}", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                ThemeTogglePill()
+                Box(
+                    Modifier
+                        .background(Panel2.copy(alpha = 0.88f), RoundedCornerShape(100.dp))
+                        .border(1.dp, GlassStroke, RoundedCornerShape(100.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Text("v${BuildConfig.VERSION_NAME}", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
-        GlassPanel(accent = Purple, padding = 15.dp) {
+        GlassPanel(accent = Purple, padding = 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("LIVE MODEL LAB", color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                    Text("6 MODES / ∞ ROUNDS", color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("問題は端末内で毎ラウンド再構成。固定順は廃止。", color = TextSub, fontSize = 10.sp)
+                    Text("LIVE MODEL LAB", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text("6 MODES / ∞ ROUNDS", color = TextMain, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                    Text("問題は端末内で毎ラウンド再構成。固定順は廃止。", color = TextSub, fontSize = 11.sp)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("LOCAL", color = Green, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                    Text("NO CLOUD", color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("LOCAL", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Text("NO CLOUD", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -119,8 +123,8 @@ internal fun HomeScreen(onMode: (GameMode) -> Unit) {
         )
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("LIVE = 実モデル採点", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-            Text("DEMO = ローカル擬似採点", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("LIVE = 実モデル採点", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("DEMO = ローカル擬似採点", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -143,15 +147,15 @@ private fun ModuleDeck(
     var progress by remember { mutableFloatStateOf(0f) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    GlassPanel(accent = accent, padding = 14.dp) {
+    GlassPanel(accent = accent, padding = 15.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(eyebrow, color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
-                Text(title, color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text(eyebrow, color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                Text(title, color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(if (installed) "LIVE READY" else "DEMO READY", color = if (installed) Green else Yellow, fontSize = 8.sp, fontWeight = FontWeight.Black)
-                Text("~${spec.approxMb} MB", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text(if (installed) "LIVE READY" else "DEMO READY", color = if (installed) Green else Yellow, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                Text("~${spec.approxMb} MB", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -168,16 +172,16 @@ private fun ModuleDeck(
 
         if (downloading) {
             ProgressTrack(progress, accent)
-            Text("MODEL ${(progress * 100).toInt()}%", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("MODEL ${(progress * 100).toInt()}%", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         } else if (!installed) {
             val shape = RoundedCornerShape(13.dp)
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
+                    .height(40.dp)
                     .clip(shape)
                     .background(accent.copy(alpha = 0.08f))
-                    .border(1.dp, accent.copy(alpha = 0.18f), shape)
+                    .border(1.dp, accent.copy(alpha = 0.20f), shape)
                     .clickable {
                         error = null
                         downloading = true
@@ -190,17 +194,17 @@ private fun ModuleDeck(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("GET ${spec.title}  //  ENABLE LIVE", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                Text("GET ${spec.title}  //  ENABLE LIVE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
             }
         }
 
         if (downloading) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CircularProgressIndicator(modifier = Modifier.height(14.dp), color = accent, strokeWidth = 2.dp)
-                Text(spec.subtitle, color = TextDim, fontSize = 8.sp)
+                Text(spec.subtitle, color = TextDim, fontSize = 9.sp)
             }
         }
-        error?.let { Text(it, color = Red, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        error?.let { Text(it, color = Red, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 
@@ -214,15 +218,15 @@ private fun ModeLaunchButton(
     val shape = RoundedCornerShape(15.dp)
     Column(
         modifier
-            .height(64.dp)
+            .height(68.dp)
             .clip(shape)
-            .background(Panel.copy(alpha = 0.78f))
-            .border(1.dp, accent.copy(alpha = 0.17f), shape)
+            .background(Panel.copy(alpha = 0.86f))
+            .border(1.dp, accent.copy(alpha = 0.20f), shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(mode.code, color = accent, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
-        Text(mode.shortTitle, color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(mode.code, color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp)
+        Text(mode.shortTitle, color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
