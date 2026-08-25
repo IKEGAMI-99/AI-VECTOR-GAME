@@ -2,7 +2,7 @@ name: Android CI + Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/readability-themes-v0.5 ]
   workflow_dispatch:
 
 permissions:
@@ -52,44 +52,17 @@ jobs:
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
-
-          echo "[verify] APK exists"
           test -s "$APK"
-
           unzip -Z1 "$APK" > /tmp/apk-files.txt
-          for REQUIRED in \
-            "AndroidManifest.xml" \
-            "classes.dex" \
-            "resources.arsc" \
-            "lib/arm64-v8a/libai_vector_native.so"
-          do
-            echo "[verify] $REQUIRED"
-            if ! grep -Fxq "$REQUIRED" /tmp/apk-files.txt; then
-              echo "::error::Required APK entry missing: $REQUIRED"
-              exit 1
-            fi
+          for REQUIRED in "AndroidManifest.xml" "classes.dex" "resources.arsc" "lib/arm64-v8a/libai_vector_native.so"; do
+            grep -Fxq "$REQUIRED" /tmp/apk-files.txt || { echo "::error::Required APK entry missing: $REQUIRED"; exit 1; }
           done
-
-          echo "[verify] native JNI exports"
-          rm -rf /tmp/apk-check
-          mkdir -p /tmp/apk-check
+          rm -rf /tmp/apk-check && mkdir -p /tmp/apk-check
           unzip -q "$APK" "lib/arm64-v8a/libai_vector_native.so" -d /tmp/apk-check
-          NATIVE="/tmp/apk-check/lib/arm64-v8a/libai_vector_native.so"
-          readelf -Ws "$NATIVE" > /tmp/native-symbols.txt
-          for SYMBOL in \
-            "Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens" \
-            "Java_com_aivectorgame_app_ai_NativeEngine_nativeEmbedding"
-          do
-            if ! grep -q "$SYMBOL" /tmp/native-symbols.txt; then
-              echo "::error::JNI export missing: $SYMBOL"
-              exit 1
-            fi
-          done
-
-          echo "[verify] APK signature"
+          readelf -Ws /tmp/apk-check/lib/arm64-v8a/libai_vector_native.so > /tmp/native-symbols.txt
+          grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens" /tmp/native-symbols.txt
+          grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativeEmbedding" /tmp/native-symbols.txt
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
-
-          echo "[verify] SHA-256"
           sha256sum "$APK"
 
       - name: Read app version
@@ -104,8 +77,7 @@ jobs:
       - name: Prepare named APK
         shell: bash
         run: |
-          cp app/build/outputs/apk/release/app-release.apk \
-            "AI-VECTOR-GAME-v${{ steps.version.outputs.version }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "AI-VECTOR-GAME-v${{ steps.version.outputs.version }}.apk"
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
@@ -127,7 +99,5 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
-            gh release create "$TAG" "$APK" \
-              --title "AI VECTOR GAME $TAG" \
-              --generate-notes
+            gh release create "$TAG" "$APK" --title "AI VECTOR GAME $TAG" --generate-notes
           fi
