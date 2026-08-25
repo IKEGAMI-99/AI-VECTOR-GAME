@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -41,8 +41,29 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Android lint
+        run: gradle :app:lintDebug --stacktrace --no-daemon
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Verify APK structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" > /tmp/apk-files.txt
+          grep -Fxq "classes.dex" /tmp/apk-files.txt
+          grep -Fxq "lib/arm64-v8a/libai_vector_native.so" /tmp/apk-files.txt
+          grep -Fxq "res/mipmap-anydpi-v26/ic_launcher.xml" /tmp/apk-files.txt
+          rm -rf /tmp/apk-check
+          mkdir -p /tmp/apk-check
+          unzip -q "$APK" "lib/arm64-v8a/libai_vector_native.so" -d /tmp/apk-check
+          NATIVE="/tmp/apk-check/lib/arm64-v8a/libai_vector_native.so"
+          readelf -Ws "$NATIVE" | grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens"
+          readelf -Ws "$NATIVE" | grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativeEmbedding"
+          sha256sum "$APK"
 
       - name: Upload debug APK
         if: success()
