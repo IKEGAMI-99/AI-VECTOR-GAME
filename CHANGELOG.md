@@ -4,6 +4,21 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.5.1] - 2026-08-25
+
+### Fixed
+
+- Reduced the total height of RANKING question controls so `LOCK RANKING` remains fully visible above the Android navigation area on the tested phone layout.
+- Converted selected-order slots to single-line centered rows, preserving Japanese glyph readability while using less vertical space.
+- Reduced Embedding result 3D height and spacing so the bottom cosine ranking strip stays fully visible above the fixed `RANDOM NEXT` action.
+- Removed the redundant `CORRECT` / `YOUR ANSWER` mini-cells from six-item RANKING result heroes.
+- Rebuilt RANKING comparison as a readable side-by-side `AI ORDER` and `YOUR ORDER` list with per-position ✓ / × status.
+
+### Upgrade
+
+- Version increased to `0.5.1` (`versionCode 6`).
+- Package name and stable development signature are unchanged, so v0.5.0 can update directly without deleting downloaded models.
+
 ## [0.5.0] - 2026-08-25
 
 ### Added
