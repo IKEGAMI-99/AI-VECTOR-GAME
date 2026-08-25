@@ -2,37 +2,61 @@
 
 Androidで、AIの **Embedding（意味空間）** と **Logit（次トークン予測）** をゲームとして体験するアプリです。
 
-**Current version: v0.2.0**
+**Current version: v0.3.0**
 
-## What you can play
+## Experience
 
-### VECTOR SPACE — Embedding Mode
+v0.3.0ではUIを全面的に再設計しました。黒を基調にしたglass / telemetryスタイル、低彩度ネオン、compact HUD、独立したResultページを採用しています。
 
-1つの単語と6つの候補を表示し、Embeddingが最も近い単語を当てます。回答後は cosine similarity、高次元Embeddingの次元数、classical MDSによる3次元射影、インタラクティブ3D空間を表示します。
+回答後に同じ問題画面の下へ結果を追加する方式を廃止し、**Question → Result → Next Question** の明確なゲームフローへ変更しました。Result画面のNEXTボタンは下部固定です。
 
-LIVEモードでは **LiquidAI/LFM2.5-Embedding-350M-GGUF Q4_K_M** を llama.cpp/JNI から端末内実行します。v0.2.0からLIVE専用問題セットを使い、成功した推論では `LIVE ENGINE • llama.cpp/JNI • DEMO SCORE TABLE NOT USED` を表示します。
+### VECTOR — Embedding Mode
 
-> 3D表示はEmbedding本来の空間そのものではなく、高次元ベクトル間の距離をなるべく保つよう3次元へ射影した可視化です。
+1つの単語と6つの候補を表示し、Embedding空間で最も近い単語を当てます。
 
-### NEXT TOKEN — Logit Mode
+LIVEモードでは **LiquidAI/LFM2.5-Embedding-350M-GGUF Q4_K_M** を llama.cpp/JNI から端末内実行します。回答後のResultページでは以下を表示します。
 
-日本語の文章を表示し、6候補のうちLLMが次に出す確率が最も高い token を当てます。
+- cosine similarity順位
+- 実Embeddingの次元数
+- classical MDSによる3次元射影
+- drag rotate / pinch zoom対応のインタラクティブ3D空間
+- score / streak / reward
 
-LIVEモードでは **LiquidAI/LFM2.5-230M-GGUF Q4_K_M** を1回forwardし、llama.cppから最終位置のlogitを直接取得します。語彙全体にSoftmaxをかけた実確率からTop-6を生成します。LIVE専用プロンプトを使用し、成功時は実logitを使っていることを画面上に明示します。
+> 3D表示はEmbedding本来の高次元空間そのものではなく、ベクトル間距離をなるべく保つよう3次元へ射影した可視化です。
+
+### TOKEN — Logit Mode
+
+日本語文章を表示し、6候補のうちLLMが次に出す確率が最も高いtokenを当てます。
+
+LIVEモードでは **LiquidAI/LFM2.5-230M-GGUF Q4_K_M** を1回forwardし、llama.cppから最終位置のlogitを直接取得します。語彙全体にSoftmaxをかけた実確率からTop-6を生成します。
+
+Resultページでは以下を表示します。
+
+- Top-1 token
+- model confidence
+- Top-6 probability distribution
+- raw logits
+- full-vocabulary Softmax probability
+- score / streak / reward
 
 ## Game system
-
-v0.2.0から両モードにゲーム進行要素を追加しました。
 
 - Round counter
 - Session score
 - Consecutive Top-1 streak
-- Top-1 bonus
+- Streak bonus
 - Top-2 / Top-3 partial score
 - Correct-answer haptic feedback
-- Reward card after every answer
+- Dedicated result page after every answer
+- Bottom-fixed NEXT action on result pages
 
 Embeddingでは実cosine順位、Logitでは実Top-token順位がそのまま得点判定になります。
+
+## LIVE verification
+
+LIVE専用問題セットとDEMO専用問題セットは分離されています。
+
+実モデル推論が成功したラウンドでは画面上にLIVE ENGINE / VERIFIED LIVEの表示が出ます。推論エラー時のみfallbackデータを使い、その状態も画面上に明示します。
 
 ## On-device models
 
@@ -40,35 +64,38 @@ Embeddingでは実cosine順位、Logitでは実Top-token順位がそのまま得
 
 | Mode | Model | Quantization | Approx. size |
 | --- | --- | --- | ---: |
-| Logit | LFM2.5-230M | Q4_K_M | ~153 MB |
-| Embedding | LFM2.5-Embedding-350M | Q4_K_M | ~229 MB |
+| Token | LFM2.5-230M | Q4_K_M | ~153 MB |
+| Vector | LFM2.5-Embedding-350M | Q4_K_M | ~229 MB |
 
-モデル未取得時は明示的な `DEMO DATA` モードになります。LIVE推論エラー時だけ、そのラウンドをfallbackデータで継続します。
+モデル未取得時は明示的なDEMOモードになります。
 
 ## In-app updates
 
-ホーム画面の `APP UPDATE` カードがGitHub Releasesの最新版を確認します。新しいバージョンがあればAPKをアプリ内で取得し、Android標準のパッケージインストーラへ渡します。
+ホーム画面のupdate moduleがGitHub Releasesの最新版を確認します。新しいバージョンがある場合は、APK取得 → Android標準package installerへ進めます。
 
 初回だけAndroidの「この提供元のアプリを許可」が必要になる場合があります。
 
-### Upgrade compatibility note
+### Upgrade compatibility
 
-v0.1.0のGitHub Actions APKは、GitHub runnerが毎回生成するdebug keystoreで署名されていました。そのためビルドごとに署名が変わり、Androidでは同じpackageでも更新できませんでした。
+- v0.1.0はCIごとに異なるdebug署名だったため、一度アンインストールが必要でした。
+- v0.2.0から `app/keys/ai-vector-game-dev.jks` の固定development署名へ移行しました。
+- **v0.2.0 → v0.3.0はアンインストール不要で直接アップデートできます。**
+- package名は引き続き `com.aivectorgame.app` です。
+- v0.3.0は `versionCode 3` なのでAndroid上でもv0.2.0の正規アップデートとして扱われます。
+- v0.2.0でダウンロード済みのモデルも、通常の上書き更新ならそのまま保持されます。
 
-v0.2.0以降は `app/keys/ai-vector-game-dev.jks` を使う固定署名です。**現在インストール済みのv0.1.0は一度だけアンインストールしてv0.2.0を入れ直す必要があります。以後は上書きアップデートできます。**
-
-この鍵は個人開発・GitHub sideload向けのdevelopment keyです。Play Store公開用のproduction keyとしては使用しません。
+この鍵は個人開発・GitHub sideload向けのdevelopment keyです。Play Store公開用production keyとしては使用しません。
 
 ## Architecture
 
 ```text
 Android / Jetpack Compose
 │
-├─ Embedding Mode
+├─ VECTOR mode
 │   └─ JNI → llama.cpp → LFM2.5 Embedding 350M
 │       └─ normalized vectors → cosine similarity → classical MDS → 3D Canvas
 │
-├─ Logit Mode
+├─ TOKEN mode
 │   └─ JNI → llama.cpp → LFM2.5 230M
 │       └─ final-position logits → full-vocabulary Softmax → Top-6 quiz
 │
@@ -94,20 +121,20 @@ gradle :app:assembleDebug :app:assembleRelease --stacktrace
 
 CMake fetches the pinned llama.cpp source during the native build. The APK targets `arm64-v8a`.
 
-GitHub Actions performs Android Lint, builds debug/release APKs, verifies the APK structure/native JNI symbols/signature, uploads a build artifact, and publishes the current `versionName` as a GitHub Release asset.
+GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK structure/native JNI symbols/signature, uploads a build artifact, and publishes the current `versionName` as a GitHub Release asset.
 
 ## Versioning
 
 Semantic Versioning is used.
 
-- `versionName`: `0.2.0`
-- `versionCode`: `2`
+- `versionName`: `0.3.0`
+- `versionCode`: `3`
 - current version is shown on the home screen
 - release changes are recorded in `CHANGELOG.md`
 
 ## Privacy
 
-Embedding and logit inference run on-device. Network access is used for model downloads, GitHub update checks, and update APK downloads.
+Embedding and logit inference run on-device. Network access is used only for model downloads, GitHub update checks, and update APK downloads.
 
 ## Credits / licenses
 
