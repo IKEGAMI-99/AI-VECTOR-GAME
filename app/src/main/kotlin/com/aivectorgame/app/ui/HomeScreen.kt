@@ -1,6 +1,8 @@
 package com.aivectorgame.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,24 +15,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aivectorgame.app.BuildConfig
 import com.aivectorgame.app.ai.ModelManager
+import com.aivectorgame.app.game.GameMode
+import kotlinx.coroutines.launch
 
 @Composable
-internal fun HomeScreen(onEmbedding: () -> Unit, onLogit: () -> Unit) {
+internal fun HomeScreen(onMode: (GameMode) -> Unit) {
     val context = LocalContext.current
     val modelManager = remember { ModelManager(context) }
     var embeddingInstalled by remember { mutableStateOf(modelManager.isInstalled(ModelManager.EMBEDDING)) }
@@ -40,120 +49,180 @@ internal fun HomeScreen(onEmbedding: () -> Unit, onLogit: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Column {
                 Text("AI//VECTOR", color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-                Text("ON-DEVICE INTELLIGENCE GAME", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text("RANDOMIZED ON-DEVICE INTELLIGENCE GAME", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
             }
             Box(
                 Modifier
                     .background(Panel2.copy(alpha = 0.78f), RoundedCornerShape(100.dp))
-                    .padding(horizontal = 11.dp, vertical = 7.dp)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text("v${BuildConfig.VERSION_NAME}", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        GlassPanel(accent = Purple, padding = 22.dp) {
-            Text("LOCAL INTELLIGENCE LAB", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-            Text("VECTOR\n/ TOKEN", color = TextMain, fontSize = 44.sp, lineHeight = 43.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp)
-            Text(
-                "意味空間を読む。次のtokenを読む。\nAIの内部出力そのものをゲームにする。",
-                color = TextSub,
-                fontSize = 14.sp,
-                lineHeight = 21.sp,
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HeroTag("100% LOCAL", Green)
-                HeroTag("NO CLOUD", Cyan)
-                HeroTag("REAL MODEL", Purple)
+        GlassPanel(accent = Purple, padding = 15.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("LIVE MODEL LAB", color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text("6 MODES / ∞ ROUNDS", color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("問題は端末内で毎ラウンド再構成。固定順は廃止。", color = TextSub, fontSize = 10.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("LOCAL", color = Green, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Text("NO CLOUD", color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                }
             }
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Purple, Cyan, Green, Purple.copy(alpha = 0f))
-                        ),
-                        RoundedCornerShape(100.dp),
-                    )
-            )
         }
 
         UpdateCard()
 
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("SELECT MODULE", color = TextMain, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-            Text("モデルの違う2つの知覚をプレイする", color = TextDim, fontSize = 11.sp)
-        }
-
-        ModeCard(
-            index = "01",
+        ModuleDeck(
             eyebrow = "SEMANTIC SPACE",
-            title = "VECTOR",
-            description = "6つの候補から、Embedding空間で最も近い単語をロック。結果は高次元ベクトルを3Dへ射影して可視化。",
+            title = "EMBEDDING",
             accent = Purple,
             spec = ModelManager.EMBEDDING,
             installed = embeddingInstalled,
+            modes = listOf(
+                GameMode.EMBEDDING_NEAREST,
+                GameMode.EMBEDDING_FARTHEST,
+                GameMode.EMBEDDING_RANKING,
+            ),
             modelManager = modelManager,
             onInstalled = { embeddingInstalled = true },
-            onStart = onEmbedding,
+            onMode = onMode,
         )
 
-        ModeCard(
-            index = "02",
+        ModuleDeck(
             eyebrow = "CAUSAL PREDICTION",
-            title = "TOKEN",
-            description = "文章の次に来るtokenを予測。実LLMのlogitとSoftmax確率をそのまま勝敗判定に使う。",
+            title = "LOGIT",
             accent = Cyan,
             spec = ModelManager.CAUSAL,
             installed = causalInstalled,
+            modes = listOf(
+                GameMode.LOGIT_TOP_TOKEN,
+                GameMode.LOGIT_RANKING,
+                GameMode.LOGIT_SURPRISE,
+            ),
             modelManager = modelManager,
             onInstalled = { causalInstalled = true },
-            onStart = onLogit,
+            onMode = onMode,
         )
 
-        GlassPanel(accent = GlassStroke, padding = 16.dp) {
-            Text("PIPELINE", color = Yellow, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TechNode("1024D", "EMBED")
-                Text("→", color = TextDim)
-                TechNode("COS", "SIM")
-                Text("→", color = TextDim)
-                TechNode("3D", "MDS")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("LIVE = 実モデル採点", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("DEMO = ローカル擬似採点", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun ModuleDeck(
+    eyebrow: String,
+    title: String,
+    accent: Color,
+    spec: ModelManager.ModelSpec,
+    installed: Boolean,
+    modes: List<GameMode>,
+    modelManager: ModelManager,
+    onInstalled: () -> Unit,
+    onMode: (GameMode) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var downloading by remember { mutableStateOf(false) }
+    var progress by remember { mutableFloatStateOf(0f) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    GlassPanel(accent = accent, padding = 14.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text(eyebrow, color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+                Text(title, color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Black)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TechNode("PROMPT", "INPUT")
-                Text("→", color = TextDim)
-                TechNode("LOGIT", "RAW")
-                Text("→", color = TextDim)
-                TechNode("TOP-6", "SOFTMAX")
+            Column(horizontalAlignment = Alignment.End) {
+                Text(if (installed) "LIVE READY" else "DEMO READY", color = if (installed) Green else Yellow, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                Text("~${spec.approxMb} MB", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(Modifier.height(20.dp))
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            modes.forEach { mode ->
+                ModeLaunchButton(
+                    mode = mode,
+                    accent = accent,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onMode(mode) },
+                )
+            }
+        }
+
+        if (downloading) {
+            ProgressTrack(progress, accent)
+            Text("MODEL ${(progress * 100).toInt()}%", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        } else if (!installed) {
+            val shape = RoundedCornerShape(13.dp)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .clip(shape)
+                    .background(accent.copy(alpha = 0.08f))
+                    .border(1.dp, accent.copy(alpha = 0.18f), shape)
+                    .clickable {
+                        error = null
+                        downloading = true
+                        scope.launch {
+                            modelManager.download(spec) { progress = it }
+                                .onSuccess { onInstalled() }
+                                .onFailure { error = it.message ?: "Download failed" }
+                            downloading = false
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("GET ${spec.title}  //  ENABLE LIVE", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+            }
+        }
+
+        if (downloading) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CircularProgressIndicator(modifier = Modifier.height(14.dp), color = accent, strokeWidth = 2.dp)
+                Text(spec.subtitle, color = TextDim, fontSize = 8.sp)
+            }
+        }
+        error?.let { Text(it, color = Red, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 
 @Composable
-private fun HeroTag(text: String, color: androidx.compose.ui.graphics.Color) {
-    Box(
-        Modifier
-            .background(color.copy(alpha = 0.08f), RoundedCornerShape(100.dp))
-            .padding(horizontal = 9.dp, vertical = 6.dp)
+private fun ModeLaunchButton(
+    mode: GameMode,
+    accent: Color,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(15.dp)
+    Column(
+        modifier
+            .height(64.dp)
+            .clip(shape)
+            .background(Panel.copy(alpha = 0.78f))
+            .border(1.dp, accent.copy(alpha = 0.17f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text, color = color, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
-    }
-}
-
-@Composable
-private fun TechNode(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = TextMain, fontSize = 12.sp, fontWeight = FontWeight.Black)
-        Text(label, color = TextDim, fontSize = 7.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+        Text(mode.code, color = accent, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+        Text(mode.shortTitle, color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
