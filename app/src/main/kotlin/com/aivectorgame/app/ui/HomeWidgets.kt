@@ -75,24 +75,24 @@ internal fun UpdateCard() {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .size(36.dp)
+                    .size(38.dp)
                     .background(Cyan.copy(alpha = 0.08f), CircleShape)
-                    .border(1.dp, Cyan.copy(alpha = 0.18f), CircleShape),
+                    .border(1.dp, Cyan.copy(alpha = 0.20f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("↻", color = Cyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("↻", color = Cyan, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
-                Text("APP CHANNEL / GITHUB", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                Text(message, color = if (release != null) Green else TextMain, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text("APP CHANNEL / GITHUB", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                Text(message, color = if (release != null) Green else TextMain, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
             if (checking) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Cyan, strokeWidth = 2.dp)
         }
 
         if (downloading) {
             ProgressTrack(progress, Cyan)
-            Text("PACKAGE ${(progress * 100).toInt()}%", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("PACKAGE ${(progress * 100).toInt()}%", color = TextDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
 
         val found = release
@@ -115,8 +115,8 @@ internal fun UpdateCard() {
                         },
                         enabled = !downloading,
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Color(0xFF061015)),
-                    ) { Text("GET v${found.version}", fontWeight = FontWeight.Black, fontSize = 10.sp) }
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = ActionText),
+                    ) { Text("GET v${found.version}", fontWeight = FontWeight.Black, fontSize = 11.sp) }
                 } else {
                     Button(
                         onClick = {
@@ -127,11 +127,11 @@ internal fun UpdateCard() {
                             }
                         },
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = Color(0xFF061015)),
-                    ) { Text("INSTALL UPDATE", fontWeight = FontWeight.Black, fontSize = 10.sp) }
+                        colors = ButtonDefaults.buttonColors(containerColor = Green, contentColor = ActionText),
+                    ) { Text("INSTALL UPDATE", fontWeight = FontWeight.Black, fontSize = 11.sp) }
                 }
                 OutlinedButton(onClick = { checkNow() }, enabled = !downloading, shape = RoundedCornerShape(14.dp)) {
-                    Text("CHECK", color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("CHECK", color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -159,43 +159,43 @@ internal fun ModeCard(
     GlassPanel(accent = accent, padding = 20.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column {
-                Text("$index / $eyebrow", color = accent, fontWeight = FontWeight.Black, fontSize = 9.sp, letterSpacing = 1.4.sp)
-                Text(title, color = TextMain, fontSize = 34.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.7).sp)
+                Text("$index / $eyebrow", color = accent, fontWeight = FontWeight.Black, fontSize = 10.sp, letterSpacing = 1.3.sp)
+                Text(title, color = TextMain, fontSize = 35.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.7).sp)
             }
             Box(
                 Modifier
                     .background(accent.copy(alpha = 0.08f), RoundedCornerShape(100.dp))
-                    .border(1.dp, accent.copy(alpha = 0.18f), RoundedCornerShape(100.dp))
+                    .border(1.dp, accent.copy(alpha = 0.20f), RoundedCornerShape(100.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Text(if (installed) "LIVE READY" else "DEMO READY", color = if (installed) Green else Yellow, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                Text(if (installed) "LIVE READY" else "DEMO READY", color = if (installed) Green else Yellow, fontSize = 9.sp, fontWeight = FontWeight.Black)
             }
         }
 
-        Text(description, color = TextSub, fontSize = 13.sp, lineHeight = 19.sp)
+        Text(description, color = TextSub, fontSize = 14.sp, lineHeight = 20.sp)
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
-                Text(spec.title, color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text(spec.subtitle, color = TextDim, fontSize = 9.sp)
+                Text(spec.title, color = TextMain, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(spec.subtitle, color = TextDim, fontSize = 10.sp)
             }
-            Text("~${spec.approxMb} MB", color = TextSub, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("~${spec.approxMb} MB", color = TextSub, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
 
         if (downloading) {
             ProgressTrack(progress, accent)
-            Text("MODEL PACKAGE ${(progress * 100).toInt()}%", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("MODEL PACKAGE ${(progress * 100).toInt()}%", color = TextDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
 
-        error?.let { Text(it, color = Red, fontSize = 10.sp) }
+        error?.let { Text(it, color = Red, fontSize = 11.sp) }
 
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Button(
                 onClick = onStart,
                 shape = RoundedCornerShape(15.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color(0xFF061015)),
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = ActionText),
             ) {
-                Text(if (installed) "ENTER LIVE" else "ENTER DEMO", fontWeight = FontWeight.Black, fontSize = 11.sp)
+                Text(if (installed) "ENTER LIVE" else "ENTER DEMO", fontWeight = FontWeight.Black, fontSize = 12.sp)
             }
             if (!installed && !downloading) {
                 OutlinedButton(
@@ -210,7 +210,7 @@ internal fun ModeCard(
                     },
                     shape = RoundedCornerShape(15.dp),
                 ) {
-                    Text("GET MODEL", color = TextMain, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("GET MODEL", color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
