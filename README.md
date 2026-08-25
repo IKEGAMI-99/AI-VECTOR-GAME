@@ -2,21 +2,18 @@
 
 Androidで、AIの **Embedding（意味空間）** と **Logit（次トークン予測）** をゲームとして体験するアプリです。
 
-**Current version: v0.5.0**
+**Current version: v0.5.1**
 
-## v0.5.0
+## v0.5.1
 
-v0.5.0は可読性と結果理解を中心にUIを調整しました。
+v0.5.1はRANKING画面の実機レイアウト修正と、回答比較の見やすさ改善が中心です。
 
-- LIGHT / DARKテーマ切替を追加し、選択を端末内へ保存
-- ライトテーマ専用の背景・文字・補助文字・枠線・アクセント配色
-- Androidのstatus/navigation bar iconもテーマへ同期
-- アプリ全体の文字スケールをわずかに拡大
-- RANKINGの選択済み順位slotを大型化し、日本語文字のclipを修正
-- 単発問題は `✓ CORRECT` / `✕ WRONG` を大きく表示
-- RANKINGは `PERFECT ORDER` / `PARTIAL MATCH` とpairwise accuracyを明示
-- RANKING resultに6順位の正解順と自分の順をpositionごとに照合する表示を追加
-- 3D vector panelはLIGHTテーマでも高コントラストを維持する専用chart accentを使用
+- RANKING questionの選択済みslot / candidate / LOCK buttonをcompact化
+- 日本語文字を切らずに、LOCK RANKINGをAndroid navigation areaより上へ収める
+- Embedding resultの3D panelと縦spacingを再調整し、下部cosine順位を固定NEXTに隠さない
+- 6項目RANKINGでは結果hero内の冗長なCORRECT / YOUR ANSWER小カードを廃止
+- `AI ORDER` と `YOUR ORDER` を左右に並べ、6順位を同じ高さで比較
+- 自分の各順位をpositionごとに緑✓ / 赤×で表示
 
 ## Six game modes
 
@@ -28,7 +25,7 @@ v0.5.0は可読性と結果理解を中心にUIを調整しました。
 
 Embedding問題は意味カテゴリ、ターゲット、関連語、無関係語を毎ラウンド再抽選します。LIVEモードでは **LiquidAI/LFM2.5-Embedding-350M-GGUF Q4_K_M** を llama.cpp/JNI から端末内実行し、実cosine similarityで正解を決定します。
 
-RANKINGはスマホ向けにdrag操作ではなく、近いと思う順に6候補をtapして順位を組み立てます。Resultではpairwise accuracyと各順位のposition matchを表示します。
+RANKINGはスマホ向けにdrag操作ではなく、近いと思う順に6候補をtapして順位を組み立てます。Resultではpairwise accuracyと `AI ORDER ↔ YOUR ORDER` を表示します。
 
 Resultページでは実Embeddingをclassical MDSで3次元へ射影し、drag rotate / pinch zoom対応の3D空間として表示します。
 
@@ -72,7 +69,7 @@ QuestionFactory
 - Consecutive perfect-answer streak
 - Top-2 / Top-3 partial score for single-choice modes
 - Pairwise ranking accuracy for RANKING modes
-- Position-by-position ranking comparison
+- Side-by-side AI / player ranking comparison
 - Correct-answer haptic feedback
 - Dedicated Result page
 - Bottom-fixed RANDOM NEXT action
@@ -83,7 +80,7 @@ QuestionFactory
 
 Question画面は大きな縦スクロールを前提にせず、compact top bar / score HUD / prompt panel / 2列×3候補grid / ranking tap-order slotsを1 viewportへ集約しています。
 
-v0.5.0では文字をやや大きくしつつ、RANKING slotの高さとline heightを見直して日本語が切れないよう調整しました。
+v0.5.1ではRANKING controlsの垂直サイズを再調整し、文字サイズを維持しながら操作ボタンが画面外へ落ちないようにしています。
 
 ## On-device models
 
@@ -102,8 +99,8 @@ v0.5.0では文字をやや大きくしつつ、RANKING slotの高さとline hei
 
 - v0.2.0以降は `app/keys/ai-vector-game-dev.jks` の固定development署名を使用しています。
 - package名は `com.aivectorgame.app` のままです。
-- **v0.4.0 → v0.5.0はアンインストール不要で直接アップデート可能です。**
-- v0.5.0は `versionCode 5` です。
+- **v0.5.0 → v0.5.1はアンインストール不要で直接アップデート可能です。**
+- v0.5.1は `versionCode 6` です。
 - 通常の上書き更新なら、既に取得済みのモデルも保持されます。
 
 この鍵は個人開発・GitHub sideload向けのdevelopment keyです。Play Store公開用production keyとしては使用しません。
@@ -153,8 +150,8 @@ GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK st
 
 ## Versioning
 
-- `versionName`: `0.5.0`
-- `versionCode`: `5`
+- `versionName`: `0.5.1`
+- `versionCode`: `6`
 - current version is shown on the home screen
 - release changes are recorded in `CHANGELOG.md`
 
