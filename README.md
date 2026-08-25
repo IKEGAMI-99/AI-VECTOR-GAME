@@ -15,6 +15,7 @@ v0.7.0では全6モードへ **30秒の制限時間** と **回答速度によ�
 - 30秒経過時は自動的にResultへ移動し0点、CHAINもリセット
 - 回答時の残り秒数を固定し、Result画面でも時間倍率を表示
 - 単発問題・RANKING・LONG FORMすべて同じ時間ルール
+- Feature-branch CIでLint、debug/release APK、JNI、APK構造、固定署名まで事前検証済み
 
 時間倍率は残り時間に応じて線形に変化します。
 
