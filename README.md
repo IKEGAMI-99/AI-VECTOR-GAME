@@ -2,18 +2,32 @@
 
 Androidで、AIの **Embedding（意味空間）** と **Logit（次トークン予測）** をゲームとして体験するアプリです。
 
-**Current release target: v0.6.0**
+**Current release target: v0.7.0**
 
-## v0.6.0
+## v0.7.0
 
-v0.6.0ではLogitの `SURPRISE` をホーム画面から外し、より本質的な **LONG FORM** モードへ置き換えました。
+v0.7.0では全6モードへ **30秒の制限時間** と **回答速度によるスコア倍率** を追加しました。
 
-- 6つの長文候補から、LFMが最も自然だと評価する続きを当てる
-- 各候補を全文tokenizeし、先頭だけではなく最後のtokenまで実モデルで採点
-- sequence probabilityの単純な積は長い候補ほど不利になるため、判定には **average token log-probability** を使用
-- 結果画面で6候補の平均logP・token数・相対順位を表示
-- 長文でもスクロールを増やさない2列×3候補UI
-- 問題は複数シナリオと文章候補から端末内で毎ラウンド再構成
+- 問題が操作可能になった瞬間から30秒カウント開始
+- LIVEモデルのロード・推論待ち時間は制限時間に含めない
+- Question HUDを `ROUND / SCORE / CHAIN / TIME` の4分割に変更
+- 残り10秒以下は警告色、5秒以下は赤色で表示
+- 30秒経過時は自動的にResultへ移動し0点、CHAINもリセット
+- 回答時の残り秒数を固定し、Result画面でも時間倍率を表示
+- 単発問題・RANKING・LONG FORMすべて同じ時間ルール
+
+時間倍率は残り時間に応じて線形に変化します。
+
+| Remaining | Multiplier |
+| ---: | ---: |
+| 30 sec | ×1.50 |
+| 20 sec | ×1.25 |
+| 10 sec | ×1.00 |
+| 0 sec | ×0.75 |
+
+`final points = base points × time multiplier`
+
+RANKINGではpairwise accuracyから計算した基本点へ同じ倍率を適用します。間違いで基本点が0の場合は、どれだけ速くても0点です。さすがに高速誤答を競技化はしません。
 
 ## Six game modes
 
@@ -76,8 +90,31 @@ QuestionFactory
 
 モデル未取得時も同じゲーム構造でDEMO採点されるため、6モードすべて遊べます。
 
+## Timed round system
+
+タイマーはモデル計算と分離しています。
+
+```text
+question generated
+      ↓
+LIVE model inference / DEMO setup
+      ↓
+choices enabled
+      ↓
+30 sec timer START
+      ↓
+answer ─────────────→ lock remaining seconds → score multiplier
+      │
+      └─ 30 sec elapsed → TIME OUT → 0 pt → Result
+```
+
+Androidの画面再描画回数に依存して時間がずれないよう、カウント基準にはmonotonic clockを使用します。
+
 ## Game system
 
+- 30-second limit on every round
+- Speed-based score multiplier ×0.75–×1.50
+- Automatic TIME OUT result / 0 points / chain reset
 - Random round generation
 - Round counter
 - Session score
@@ -94,7 +131,7 @@ QuestionFactory
 
 ホームはEmbedding / Logitの2つのmodule deckにまとめ、それぞれ3モードへ直接入れる構成です。
 
-Question画面は大きな縦スクロールを前提にせず、compact top bar / score HUD / prompt panel / 2列×3候補grid / ranking tap-order slotsを1 viewportへ集約しています。
+Question画面は大きな縦スクロールを前提にせず、compact top bar / 4-cell timed score HUD / prompt panel / 2列×3候補grid / ranking tap-order slotsを1 viewportへ集約しています。
 
 LONG FORMも長文候補を2列×3段へ収め、回答後は専用Result画面へ移動します。
 
@@ -115,8 +152,8 @@ LONG FORMも長文候補を2列×3段へ収め、回答後は専用Result画面�
 
 - v0.2.0以降は同じ固定development署名を使用しています。
 - package名は `com.aivectorgame.app` のままです。
-- **v0.5.1 → v0.6.0はアンインストール不要で直接アップデート可能**です。
-- v0.6.0 release APKは `versionCode 7` でビルドします。
+- **v0.6.0 → v0.7.0はアンインストール不要で直接アップデート可能**です。
+- v0.7.0 release APKは `versionCode 8` でビルドします。
 - 通常の上書き更新なら、既に取得済みのLFMモデルも保持されます。
 
 ## Architecture
@@ -126,6 +163,11 @@ Android / Jetpack Compose
 │
 ├─ ThemeController
 │   └─ persistent LIGHT / DARK palette
+│
+├─ RoundTimer
+│   ├─ 30 sec monotonic countdown
+│   ├─ TIME OUT transition
+│   └─ speed score multiplier
 │
 ├─ Question generators
 │   ├─ randomized semantic questions
@@ -166,8 +208,8 @@ GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK st
 
 ## Versioning
 
-- release target: `0.6.0`
-- release `versionCode`: `7`
+- release target: `0.7.0`
+- release `versionCode`: `8`
 - current version is shown on the home screen
 - release changes are recorded in `CHANGELOG.md`
 
