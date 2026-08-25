@@ -2,7 +2,7 @@ name: Android CI + Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'feat/random-six-modes-v0.4' ]
   workflow_dispatch:
 
 permissions:
