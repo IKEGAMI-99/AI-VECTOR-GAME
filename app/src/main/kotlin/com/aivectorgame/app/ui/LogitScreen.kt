@@ -237,14 +237,14 @@ private fun TokenQuestionPage(
         GlassPanel(accent = Cyan, padding = 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text(mode.code, color = Cyan, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                    Text("「$prompt▌」", color = TextMain, fontSize = 21.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(mode.code, color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text("「$prompt▌」", color = TextMain, fontSize = 23.sp, lineHeight = 30.sp, fontWeight = FontWeight.Black, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
                 if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), color = Cyan, strokeWidth = 2.dp)
             }
-            Text(mode.instruction, color = TextSub, fontSize = 11.sp)
+            Text(mode.instruction, color = TextSub, fontSize = 12.sp)
             if (mode == GameMode.LOGIT_SURPRISE) {
-                Text("HUMAN EXPECTS  /  $humanExpected", color = Pink, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                Text("HUMAN EXPECTS  /  $humanExpected", color = Pink, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
             }
             Text(
                 when {
@@ -258,15 +258,15 @@ private fun TokenQuestionPage(
                     error != null -> Yellow
                     else -> TextDim
                 },
-                fontSize = 8.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 0.7.sp,
+                letterSpacing = 0.65.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        Text("TOKEN CANDIDATES / 06", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+        Text("TOKEN CANDIDATES / 06", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
         val labels = choices.map { displayToken(it.piece) }
         if (mode == GameMode.LOGIT_RANKING) {
             RankingComposer(
@@ -320,7 +320,7 @@ private fun TokenResultPage(
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
-                .padding(bottom = 68.dp),
+                .padding(bottom = 70.dp),
             verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             GameTopBar("${mode.shortTitle} / RESULT", "LOGIT → SOFTMAX", Cyan, onBack)
@@ -328,18 +328,19 @@ private fun TokenResultPage(
 
             if (rankingMode) {
                 CompactResultPanel(
-                    title = "ORDER MATCH",
-                    headline = "$orderAccuracy% PAIRWISE",
+                    title = "ORDER RESULT",
+                    headline = "$orderAccuracy% PAIRWISE ACCURACY",
                     detailLeft = displayToken(top?.piece ?: "?"),
                     detailRight = userOrder.firstOrNull()?.let { displayToken(choices.getOrNull(it)?.piece ?: "?") } ?: "—",
                     points = rewardPoints,
                     accent = Cyan,
                     success = orderAccuracy == 100,
+                    rankingAccuracy = orderAccuracy,
                 )
             } else {
                 CompactResultPanel(
-                    title = if (mode == GameMode.LOGIT_SURPRISE) "AI / HUMAN DIVERGENCE" else if (answerRank == 0) "TOP-1 LOCK" else "MODEL REVEAL",
-                    headline = if (answerRank == 0) "CORRECT" else "RANK ${answerRank + 1}",
+                    title = if (mode == GameMode.LOGIT_SURPRISE) "AI / HUMAN DIVERGENCE" else "TOKEN ANSWER",
+                    headline = if (answerRank == 0) "MODEL TOP-1 MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}",
                     detailLeft = displayToken(top?.piece ?: "?"),
                     detailRight = displayToken(selected?.piece ?: "—"),
                     points = rewardPoints,
@@ -352,40 +353,48 @@ private fun TokenResultPage(
                 GlassPanel(accent = Pink, padding = 11.dp) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(Modifier.weight(1f)) {
-                            Text("HUMAN EXPECTATION", color = Pink, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.9.sp)
-                            Text(humanExpected, color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("HUMAN EXPECTATION", color = Pink, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                            Text(humanExpected, color = TextMain, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                            Text("AI TOP-1", color = Cyan, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 0.9.sp)
-                            Text(displayToken(top?.piece ?: "?"), color = Green, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("AI TOP-1", color = Cyan, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                            Text(displayToken(top?.piece ?: "?"), color = Green, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
             if (live && liveResult) {
-                Text("VERIFIED LIVE / TOP-6 FROM REAL VOCABULARY SOFTMAX", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+                Text("VERIFIED LIVE / TOP-6 FROM REAL VOCABULARY SOFTMAX", color = Green, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.65.sp)
+            }
+
+            if (rankingMode) {
+                RankingComparison(
+                    truthLabels = truthOrder.map { displayToken(choices.getOrNull(it)?.piece ?: "?") },
+                    userLabels = userOrder.map { displayToken(choices.getOrNull(it)?.piece ?: "?") },
+                    accent = Cyan,
+                )
             }
 
             GlassPanel(accent = Cyan, padding = 12.dp) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("TOP-6 DISTRIBUTION", color = Cyan, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
-                    Text("「${prompt.take(18)}…」", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Text("TOP-6 DISTRIBUTION", color = Cyan, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                    Text("「${prompt.take(18)}…」", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
                 truthOrder.forEachIndexed { rank, index ->
                     val token = choices.getOrNull(index) ?: return@forEachIndexed
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("#${rank + 1}", color = if (rank == 0) Green else TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        Text("#${rank + 1}", color = if (rank == 0) Green else TextDim, fontSize = 9.sp, fontWeight = FontWeight.Black)
                         Text(
                             displayToken(token.piece),
                             color = if (rank == 0) Green else TextMain,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 8.dp).weight(1f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text("${"%.2f".format(token.probability * 100)}%", color = if (rank == 0) Green else TextSub, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("${"%.2f".format(token.probability * 100)}%", color = if (rank == 0) Green else TextSub, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                     ProgressTrack((token.probability / ((top?.probability ?: 0.01f).coerceAtLeast(0.01f))).coerceIn(0f, 1f), if (rank == 0) Cyan else TextDim)
                 }
