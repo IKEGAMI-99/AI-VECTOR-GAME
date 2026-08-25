@@ -62,6 +62,20 @@ internal fun LogitGame(mode: GameMode, onBack: () -> Unit) {
     var rewardPoints by remember(seed) { mutableIntStateOf(0) }
     var answerRank by remember(seed) { mutableIntStateOf(-1) }
     var orderAccuracy by remember(seed) { mutableIntStateOf(0) }
+    var answerSeconds by remember(seed) { mutableIntStateOf(ROUND_TIME_LIMIT_SECONDS) }
+
+    val timer = rememberRoundTimer(
+        roundKey = seed,
+        enabled = stage == TokenStage.QUESTION && !loading,
+        onTimeout = {
+            rewardPoints = 0
+            answerRank = -1
+            orderAccuracy = 0
+            answerSeconds = 0
+            streak = 0
+            stage = TokenStage.RESULT
+        },
+    )
 
     LaunchedEffect(seed, live, mode) {
         if (!live) return@LaunchedEffect
@@ -124,14 +138,16 @@ internal fun LogitGame(mode: GameMode, onBack: () -> Unit) {
 
     fun awardSingle(index: Int) {
         selectedIndex = index
+        answerSeconds = timer.secondsRemaining
         val rank = truthOrder.indexOf(index).coerceAtLeast(0)
         answerRank = rank
-        val gained = when (rank) {
+        val base = when (rank) {
             0 -> 150 + min(streak, 5) * 25
             1 -> 70
             2 -> 35
             else -> 0
         } + if (mode == GameMode.LOGIT_SURPRISE && rank == 0) 30 else 0
+        val gained = applyTimeMultiplier(base, answerSeconds)
         rewardPoints = gained
         score += gained
         if (rank == 0) {
@@ -144,9 +160,11 @@ internal fun LogitGame(mode: GameMode, onBack: () -> Unit) {
     }
 
     fun awardRanking() {
+        answerSeconds = timer.secondsRemaining
         val accuracy = rankingAccuracy(userOrder, truthOrder)
         orderAccuracy = accuracy
-        val gained = (accuracy * 2) + if (accuracy == 100) min(streak, 5) * 35 else 0
+        val base = (accuracy * 2) + if (accuracy == 100) min(streak, 5) * 35 else 0
+        val gained = applyTimeMultiplier(base, answerSeconds)
         rewardPoints = gained
         score += gained
         if (accuracy == 100) {
@@ -164,6 +182,7 @@ internal fun LogitGame(mode: GameMode, onBack: () -> Unit) {
             round = round,
             score = score,
             streak = streak,
+            secondsRemaining = timer.secondsRemaining,
             prompt = question.prompt,
             humanExpected = question.humanExpected,
             choices = choices,
@@ -194,6 +213,8 @@ internal fun LogitGame(mode: GameMode, onBack: () -> Unit) {
             answerRank = answerRank,
             orderAccuracy = orderAccuracy,
             rewardPoints = rewardPoints,
+            answerSeconds = answerSeconds,
+            timedOut = timer.timedOut,
             live = live,
             liveResult = liveResult,
             onBack = onBack,
@@ -211,6 +232,7 @@ private fun TokenQuestionPage(
     round: Int,
     score: Int,
     streak: Int,
+    secondsRemaining: Int,
     prompt: String,
     humanExpected: String,
     choices: List<NativeEngine.TokenPrediction>,
@@ -232,7 +254,7 @@ private fun TokenQuestionPage(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         GameTopBar(mode.shortTitle, "RANDOM CAUSAL ROUND", Cyan, onBack)
-        ScoreHud(round, score, streak, Cyan)
+        TimedScoreHud(round, score, streak, secondsRemaining, Cyan)
 
         GlassPanel(accent = Cyan, padding = 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -306,6 +328,8 @@ private fun TokenResultPage(
     answerRank: Int,
     orderAccuracy: Int,
     rewardPoints: Int,
+    answerSeconds: Int,
+    timedOut: Boolean,
     live: Boolean,
     liveResult: Boolean,
     onBack: () -> Unit,
@@ -326,10 +350,12 @@ private fun TokenResultPage(
             GameTopBar("${mode.shortTitle} / RESULT", "LOGIT → SOFTMAX", Cyan, onBack)
             ScoreHud(round, score, streak, Cyan)
 
-            if (rankingMode) {
+            if (timedOut) {
+                TimeoutResultPanel(Cyan)
+            } else if (rankingMode) {
                 CompactResultPanel(
                     title = "ORDER RESULT",
-                    headline = "$orderAccuracy% PAIRWISE ACCURACY",
+                    headline = "$orderAccuracy% PAIRWISE  •  ${timeScoreLabel(answerSeconds)}",
                     detailLeft = displayToken(top?.piece ?: "?"),
                     detailRight = userOrder.firstOrNull()?.let { displayToken(choices.getOrNull(it)?.piece ?: "?") } ?: "—",
                     points = rewardPoints,
@@ -340,7 +366,7 @@ private fun TokenResultPage(
             } else {
                 CompactResultPanel(
                     title = if (mode == GameMode.LOGIT_SURPRISE) "AI / HUMAN DIVERGENCE" else "TOKEN ANSWER",
-                    headline = if (answerRank == 0) "MODEL TOP-1 MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}",
+                    headline = (if (answerRank == 0) "MODEL TOP-1 MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}") + "  •  ${timeScoreLabel(answerSeconds)}",
                     detailLeft = displayToken(top?.piece ?: "?"),
                     detailRight = displayToken(selected?.piece ?: "—"),
                     points = rewardPoints,
