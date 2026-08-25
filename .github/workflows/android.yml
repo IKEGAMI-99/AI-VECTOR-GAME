@@ -2,7 +2,7 @@ name: Android CI + Release
 
 on:
   push:
-    branches: [ main, fix/ranking-layout-v0.5.1 ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
