@@ -28,6 +28,7 @@ The project follows Semantic Versioning.
 - Version increased to `0.4.0` (`versionCode 4`).
 - Package name remains `com.aivectorgame.app`.
 - Uses the same stable development signature as v0.2.0/v0.3.0, so v0.3.0 can update directly without uninstalling or deleting downloaded models.
+- Pre-release feature-branch CI passed Android Lint, debug/release APK builds, JNI verification, APK structure checks, and signature verification before merging to main.
 
 ## [0.3.0] - 2026-08-25
 
