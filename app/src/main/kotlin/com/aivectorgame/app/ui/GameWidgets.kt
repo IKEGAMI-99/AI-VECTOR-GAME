@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +31,9 @@ internal fun CompactChoiceGrid(
     selected: Set<Int> = emptySet(),
     onChoose: (Int) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         labels.chunked(2).forEachIndexed { rowIndex, row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 row.forEachIndexed { columnIndex, label ->
                     val index = rowIndex * 2 + columnIndex
                     CompactChoice(
@@ -64,25 +65,26 @@ private fun CompactChoice(
     val shape = RoundedCornerShape(17.dp)
     Row(
         modifier
-            .height(58.dp)
+            .height(64.dp)
             .clip(shape)
-            .background(if (selected) accent.copy(alpha = 0.10f) else Panel.copy(alpha = 0.88f))
-            .border(1.dp, if (selected) accent.copy(alpha = 0.48f) else GlassStroke.copy(alpha = 0.75f), shape)
+            .background(if (selected) accent.copy(alpha = 0.10f) else Panel.copy(alpha = 0.90f))
+            .border(1.dp, if (selected) accent.copy(alpha = 0.52f) else GlassStroke.copy(alpha = 0.82f), shape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             (index + 1).toString().padStart(2, '0'),
             color = if (selected) accent else TextDim,
-            fontSize = 9.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Black,
         )
         Text(
             label,
             color = if (selected) TextSub else TextMain,
-            fontSize = 14.sp,
+            fontSize = 16.sp,
+            lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -101,13 +103,13 @@ internal fun RankingComposer(
     onReset: () -> Unit,
     onSubmit: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("TAP ORDER  //  01 → 06", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            Text("TAP ORDER  //  01 → 06", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
             Text(
                 if (order.isEmpty()) "RESET" else "RESET ×${order.size}",
                 color = if (order.isEmpty()) TextDim else TextSub,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable(enabled = order.isNotEmpty(), onClick = onReset),
             )
@@ -128,7 +130,7 @@ internal fun RankingComposer(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(56.dp)
                 .clip(shape)
                 .background(if (order.size == labels.size) accent else Panel3)
                 .clickable(enabled = enabled && order.size == labels.size, onClick = onSubmit),
@@ -136,10 +138,10 @@ internal fun RankingComposer(
         ) {
             Text(
                 if (order.size == labels.size) "LOCK RANKING  →" else "SELECT ${labels.size - order.size} MORE",
-                color = if (order.size == labels.size) Color(0xFF061015) else TextDim,
-                fontSize = 11.sp,
+                color = if (order.size == labels.size) ActionText else TextDim,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
+                letterSpacing = 0.9.sp,
             )
         }
     }
@@ -154,17 +156,25 @@ private fun orderSlots(labels: List<String>, order: List<Int>, accent: Color, st
             Column(
                 Modifier
                     .weight(1f)
-                    .height(46.dp)
+                    .height(62.dp)
                     .clip(shape)
-                    .background(if (itemIndex != null) accent.copy(alpha = 0.09f) else Panel.copy(alpha = 0.72f))
-                    .border(1.dp, if (itemIndex != null) accent.copy(alpha = 0.25f) else GlassStroke.copy(alpha = 0.55f), shape)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .background(if (itemIndex != null) accent.copy(alpha = 0.09f) else Panel.copy(alpha = 0.82f))
+                    .border(1.dp, if (itemIndex != null) accent.copy(alpha = 0.32f) else GlassStroke.copy(alpha = 0.65f), shape)
+                    .padding(horizontal = 9.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.Center,
             ) {
-                Text("#${rank + 1}", color = if (itemIndex != null) accent else TextDim, fontSize = 7.sp, fontWeight = FontWeight.Black)
+                Text(
+                    "#${rank + 1}",
+                    color = if (itemIndex != null) accent else TextDim,
+                    fontSize = 8.sp,
+                    lineHeight = 11.sp,
+                    fontWeight = FontWeight.Black,
+                )
                 Text(
                     itemIndex?.let { labels.getOrElse(it) { "?" } } ?: "—",
                     color = if (itemIndex != null) TextMain else TextDim,
-                    fontSize = 10.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -183,22 +193,36 @@ internal fun CompactResultPanel(
     points: Int,
     accent: Color,
     success: Boolean,
+    rankingAccuracy: Int? = null,
 ) {
-    val statusColor = if (success) Green else Yellow
-    GlassPanel(accent = statusColor, padding = 15.dp) {
+    val isRanking = rankingAccuracy != null
+    val statusColor = when {
+        success -> Green
+        isRanking -> Yellow
+        else -> Red
+    }
+    val verdict = when {
+        isRanking && success -> "✓ PERFECT ORDER"
+        isRanking -> "△ PARTIAL MATCH"
+        success -> "✓ CORRECT"
+        else -> "✕ WRONG"
+    }
+
+    GlassPanel(accent = statusColor, padding = 16.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                Text(title, color = statusColor, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
-                Text(headline, color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, color = statusColor, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                Text(verdict, color = statusColor, fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Black)
+                Text(headline, color = TextSub, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(if (points > 0) "+$points" else "0", color = accent, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                Text("PTS", color = TextDim, fontSize = 7.sp, fontWeight = FontWeight.Black)
+                Text(if (points > 0) "+$points" else "0", color = accent, fontSize = 29.sp, fontWeight = FontWeight.Black)
+                Text("PTS", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MiniResultCell("MODEL", detailLeft, statusColor, Modifier.weight(1f))
-            MiniResultCell("YOU", detailRight, TextMain, Modifier.weight(1f))
+            MiniResultCell("CORRECT", detailLeft, Green, Modifier.weight(1f))
+            MiniResultCell("YOUR ANSWER", detailRight, if (success) Green else Red, Modifier.weight(1f))
         }
     }
 }
@@ -209,11 +233,62 @@ private fun MiniResultCell(label: String, value: String, color: Color, modifier:
     Column(
         modifier
             .clip(shape)
-            .background(Panel.copy(alpha = 0.75f))
-            .padding(horizontal = 10.dp, vertical = 7.dp)
+            .background(color.copy(alpha = 0.045f))
+            .border(1.dp, color.copy(alpha = 0.12f), shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
-        Text(label, color = TextDim, fontSize = 7.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-        Text(value, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.9.sp)
+        Text(value, color = color, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+internal fun RankingComparison(
+    truthLabels: List<String>,
+    userLabels: List<String>,
+    accent: Color,
+) {
+    GlassPanel(accent = accent, padding = 11.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("POSITION CHECK", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+            Text("GREEN = EXACT POSITION", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (rank in 0 until 6) {
+                val truth = truthLabels.getOrElse(rank) { "—" }
+                val user = userLabels.getOrElse(rank) { "—" }
+                val match = truth == user
+                val color = if (match) Green else Red
+                Column(
+                    Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text("#${rank + 1}", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        truth,
+                        color = TextMain,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        user,
+                        color = color,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(if (match) "✓" else "×", color = color, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                }
+            }
+        }
     }
 }
 
