@@ -44,6 +44,14 @@ enum class GameMode(
         "LOG/R",
         "6候補を確率の高い順に並べる",
     ),
+    LOGIT_LONG_FORM(
+        GameFamily.LOGIT,
+        "Logit：LONG FORM",
+        "LONG FORM",
+        "LOG/L",
+        "6つの長文候補からAIが最も自然だと評価する続きを当てる",
+    ),
+    // Legacy mode kept for save/state compatibility. It is no longer exposed in the UI.
     LOGIT_SURPRISE(
         GameFamily.LOGIT,
         "Logit：SURPRISE",
