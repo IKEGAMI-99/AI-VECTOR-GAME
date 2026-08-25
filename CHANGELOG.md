@@ -4,6 +4,31 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.4.0] - 2026-08-25
+
+### Added
+
+- Six explicit game modes: Embedding NEAREST / FARTHEST / RANKING and Logit TOP TOKEN / RANKING / SURPRISE.
+- `QuestionFactory` for randomized on-device question generation instead of repeating a fixed sequence.
+- Procedural semantic questions assembled from target clusters, related words, and cross-cluster distractors.
+- Procedural causal prompts with randomized values and sentence recipes.
+- SURPRISE scanner that performs real model inference and rejects prompts where the human expectation matches the model Top-1, keeping mismatches for play.
+- Tap-order ranking editor optimized for one-handed phone use.
+- Pairwise ranking accuracy scoring for both ranking modes.
+
+### Changed
+
+- Home screen now exposes all six modes directly inside compact Embedding and Logit module decks.
+- Question screens were compressed into a mostly single-viewport layout with 2×3 candidate grids.
+- Result pages use a compact result summary, smaller 3D projection, compact cosine rank strip, and compact Top-6 distribution.
+- Result NEXT action now generates a new random round.
+
+### Upgrade
+
+- Version increased to `0.4.0` (`versionCode 4`).
+- Package name remains `com.aivectorgame.app`.
+- Uses the same stable development signature as v0.2.0/v0.3.0, so v0.3.0 can update directly without uninstalling or deleting downloaded models.
+
 ## [0.3.0] - 2026-08-25
 
 ### Changed
