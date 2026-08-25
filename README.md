@@ -2,13 +2,21 @@
 
 Androidで、AIの **Embedding（意味空間）** と **Logit（次トークン予測）** をゲームとして体験するアプリです。
 
-**Current version: v0.4.0**
+**Current version: v0.5.0**
 
-## v0.4.0
+## v0.5.0
 
-v0.4.0では固定問題セットを主役から外し、端末内の `QuestionFactory` が毎ラウンド問題を再構成する方式へ変更しました。LIVE時は生成された問題を実モデルで採点します。
+v0.5.0は可読性と結果理解を中心にUIを調整しました。
 
-画面もさらにcompact化し、Question画面は基本的に1画面内で回答できる構成です。Result画面も3D / Top-6情報を圧縮し、NEXTは引き続き画面下部固定です。
+- LIGHT / DARKテーマ切替を追加し、選択を端末内へ保存
+- ライトテーマ専用の背景・文字・補助文字・枠線・アクセント配色
+- Androidのstatus/navigation bar iconもテーマへ同期
+- アプリ全体の文字スケールをわずかに拡大
+- RANKINGの選択済み順位slotを大型化し、日本語文字のclipを修正
+- 単発問題は `✓ CORRECT` / `✕ WRONG` を大きく表示
+- RANKINGは `PERFECT ORDER` / `PARTIAL MATCH` とpairwise accuracyを明示
+- RANKING resultに6順位の正解順と自分の順をpositionごとに照合する表示を追加
+- 3D vector panelはLIGHTテーマでも高コントラストを維持する専用chart accentを使用
 
 ## Six game modes
 
@@ -20,7 +28,7 @@ v0.4.0では固定問題セットを主役から外し、端末内の `QuestionF
 
 Embedding問題は意味カテゴリ、ターゲット、関連語、無関係語を毎ラウンド再抽選します。LIVEモードでは **LiquidAI/LFM2.5-Embedding-350M-GGUF Q4_K_M** を llama.cpp/JNI から端末内実行し、実cosine similarityで正解を決定します。
 
-RANKINGはスマホ向けにdrag操作ではなく、近いと思う順に6候補をtapして順位を組み立てます。Resultではpairwise accuracyと実順位を表示します。
+RANKINGはスマホ向けにdrag操作ではなく、近いと思う順に6候補をtapして順位を組み立てます。Resultではpairwise accuracyと各順位のposition matchを表示します。
 
 Resultページでは実Embeddingをclassical MDSで3次元へ射影し、drag rotate / pinch zoom対応の3D空間として表示します。
 
@@ -32,7 +40,13 @@ Resultページでは実Embeddingをclassical MDSで3次元へ射影し、drag r
 
 Logit問題も文章テンプレートと値を端末内で再構成します。LIVEモードでは **LiquidAI/LFM2.5-230M-GGUF Q4_K_M** を1回forwardし、最終位置logitから語彙全体Softmaxを計算してTop-6を生成します。
 
-SURPRISEでは候補プロンプトを生成して実推論し、`humanExpected` とモデルTop-1を比較します。一致した問題は捨て、ズレた問題を見つけるまで最大12候補をscanします。これにより「SURPRISE」という名前だけの普通のTop-1問題にならないようにしています。
+SURPRISEでは候補プロンプトを生成して実推論し、`humanExpected` とモデルTop-1を比較します。一致した問題は捨て、ズレた問題を見つけるまで最大12候補をscanします。
+
+## Theme system
+
+ホーム上部のtheme pillからLIGHT / DARKを切り替えられます。選択はSharedPreferencesへ保存され、次回起動時にも維持されます。
+
+LIGHTでは背景を単純に白反転するのではなく、本文・補助文字・glass panel・stroke・accentを別paletteに切り替えます。3D Vector CloudはLIGHT UI内でも読みやすさを落とさないよう、暗いchart surface + 明るいchart accentを維持します。
 
 ## Random question system
 
@@ -58,6 +72,7 @@ QuestionFactory
 - Consecutive perfect-answer streak
 - Top-2 / Top-3 partial score for single-choice modes
 - Pairwise ranking accuracy for RANKING modes
+- Position-by-position ranking comparison
 - Correct-answer haptic feedback
 - Dedicated Result page
 - Bottom-fixed RANDOM NEXT action
@@ -66,15 +81,9 @@ QuestionFactory
 
 ホームはEmbedding / Logitの2つのmodule deckにまとめ、それぞれ3モードへ直接入れる構成です。
 
-Question画面は大きな縦スクロールを前提にせず、以下を1 viewportへ集約しています。
+Question画面は大きな縦スクロールを前提にせず、compact top bar / score HUD / prompt panel / 2列×3候補grid / ranking tap-order slotsを1 viewportへ集約しています。
 
-- compact top bar
-- score HUD
-- prompt / target panel
-- 2列×3候補grid
-- ranking tap-order slots
-
-Result画面も大型の縦長一覧を避け、Embeddingはcompact 3D + 6順位、Logitはcompact Top-6 distributionを表示します。
+v0.5.0では文字をやや大きくしつつ、RANKING slotの高さとline heightを見直して日本語が切れないよう調整しました。
 
 ## On-device models
 
@@ -93,8 +102,8 @@ Result画面も大型の縦長一覧を避け、Embeddingはcompact 3D + 6順位
 
 - v0.2.0以降は `app/keys/ai-vector-game-dev.jks` の固定development署名を使用しています。
 - package名は `com.aivectorgame.app` のままです。
-- **v0.3.0 → v0.4.0はアンインストール不要で直接アップデート可能です。**
-- v0.4.0は `versionCode 4` です。
+- **v0.4.0 → v0.5.0はアンインストール不要で直接アップデート可能です。**
+- v0.5.0は `versionCode 5` です。
 - 通常の上書き更新なら、既に取得済みのモデルも保持されます。
 
 この鍵は個人開発・GitHub sideload向けのdevelopment keyです。Play Store公開用production keyとしては使用しません。
@@ -103,6 +112,9 @@ Result画面も大型の縦長一覧を避け、Embeddingはcompact 3D + 6順位
 
 ```text
 Android / Jetpack Compose
+│
+├─ ThemeController
+│   └─ persistent LIGHT / DARK palette
 │
 ├─ QuestionFactory
 │   ├─ randomized semantic questions
@@ -119,8 +131,6 @@ Android / Jetpack Compose
 └─ Update Manager
     └─ GitHub Releases API → signed APK → Android Package Installer
 ```
-
-Native runtime is pinned to the repository's configured llama.cpp revision for reproducible builds.
 
 ## Build
 
@@ -143,8 +153,8 @@ GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK st
 
 ## Versioning
 
-- `versionName`: `0.4.0`
-- `versionCode`: `4`
+- `versionName`: `0.5.0`
+- `versionCode`: `5`
 - current version is shown on the home screen
 - release changes are recorded in `CHANGELOG.md`
 
