@@ -87,10 +87,16 @@ fun AiVectorGameApp() {
                                 mode = activeMode,
                                 onBack = { mode = null },
                             )
-                            GameFamily.LOGIT -> LogitGame(
-                                mode = activeMode,
-                                onBack = { mode = null },
-                            )
+                            GameFamily.LOGIT -> {
+                                if (activeMode == GameMode.LOGIT_LONG_FORM) {
+                                    LongFormGame(onBack = { mode = null })
+                                } else {
+                                    LogitGame(
+                                        mode = activeMode,
+                                        onBack = { mode = null },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
