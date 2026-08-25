@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,9 +30,9 @@ internal fun CompactChoiceGrid(
     selected: Set<Int> = emptySet(),
     onChoose: (Int) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         labels.chunked(2).forEachIndexed { rowIndex, row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEachIndexed { columnIndex, label ->
                     val index = rowIndex * 2 + columnIndex
                     CompactChoice(
@@ -65,7 +64,7 @@ private fun CompactChoice(
     val shape = RoundedCornerShape(17.dp)
     Row(
         modifier
-            .height(64.dp)
+            .height(58.dp)
             .clip(shape)
             .background(if (selected) accent.copy(alpha = 0.10f) else Panel.copy(alpha = 0.90f))
             .border(1.dp, if (selected) accent.copy(alpha = 0.52f) else GlassStroke.copy(alpha = 0.82f), shape)
@@ -103,7 +102,7 @@ internal fun RankingComposer(
     onReset: () -> Unit,
     onSubmit: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("TAP ORDER  //  01 → 06", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
             Text(
@@ -130,7 +129,7 @@ internal fun RankingComposer(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(50.dp)
                 .clip(shape)
                 .background(if (order.size == labels.size) accent else Panel3)
                 .clickable(enabled = enabled && order.size == labels.size, onClick = onSubmit),
@@ -153,15 +152,16 @@ private fun orderSlots(labels: List<String>, order: List<Int>, accent: Color, st
         for (rank in start until (start + 3)) {
             val itemIndex = order.getOrNull(rank)
             val shape = RoundedCornerShape(14.dp)
-            Column(
+            Row(
                 Modifier
                     .weight(1f)
-                    .height(62.dp)
+                    .height(50.dp)
                     .clip(shape)
                     .background(if (itemIndex != null) accent.copy(alpha = 0.09f) else Panel.copy(alpha = 0.82f))
                     .border(1.dp, if (itemIndex != null) accent.copy(alpha = 0.32f) else GlassStroke.copy(alpha = 0.65f), shape)
-                    .padding(horizontal = 9.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.Center,
+                    .padding(horizontal = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 Text(
                     "#${rank + 1}",
@@ -178,6 +178,7 @@ private fun orderSlots(labels: List<String>, order: List<Int>, accent: Color, st
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -220,9 +221,11 @@ internal fun CompactResultPanel(
                 Text("PTS", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MiniResultCell("CORRECT", detailLeft, Green, Modifier.weight(1f))
-            MiniResultCell("YOUR ANSWER", detailRight, if (success) Green else Red, Modifier.weight(1f))
+        if (!isRanking) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MiniResultCell("CORRECT", detailLeft, Green, Modifier.weight(1f))
+                MiniResultCell("YOUR ANSWER", detailRight, if (success) Green else Red, Modifier.weight(1f))
+            }
         }
     }
 }
@@ -248,46 +251,67 @@ internal fun RankingComparison(
     userLabels: List<String>,
     accent: Color,
 ) {
-    GlassPanel(accent = accent, padding = 11.dp) {
+    GlassPanel(accent = accent, padding = 12.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("POSITION CHECK", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
-            Text("GREEN = EXACT POSITION", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("AI ↔ YOU / ORDER COMPARE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.9.sp)
+            Text("✓ SAME POSITION", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Bold)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (rank in 0 until 6) {
-                val truth = truthLabels.getOrElse(rank) { "—" }
-                val user = userLabels.getOrElse(rank) { "—" }
-                val match = truth == user
-                val color = if (match) Green else Red
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text("#${rank + 1}", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
-                    Text(
-                        truth,
-                        color = TextMain,
-                        fontSize = 10.sp,
-                        lineHeight = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        user,
-                        color = color,
-                        fontSize = 10.sp,
-                        lineHeight = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(if (match) "✓" else "×", color = color, fontSize = 11.sp, fontWeight = FontWeight.Black)
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("AI ORDER", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                truthLabels.take(6).forEachIndexed { rank, label ->
+                    RankCompareLine(rank = rank, label = label, color = TextMain, marker = null)
                 }
             }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("YOUR ORDER", color = TextSub, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                for (rank in 0 until 6) {
+                    val truth = truthLabels.getOrElse(rank) { "—" }
+                    val user = userLabels.getOrElse(rank) { "—" }
+                    val match = truth == user
+                    RankCompareLine(
+                        rank = rank,
+                        label = user,
+                        color = if (match) Green else Red,
+                        marker = if (match) "✓" else "×",
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankCompareLine(rank: Int, label: String, color: Color, marker: String?) {
+    val shape = RoundedCornerShape(9.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(color.copy(alpha = 0.045f))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Text(
+            (rank + 1).toString().padStart(2, '0'),
+            color = TextDim,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            label,
+            color = color,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (marker != null) {
+            Text(marker, color = color, fontSize = 11.sp, fontWeight = FontWeight.Black)
         }
     }
 }
