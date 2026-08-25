@@ -4,6 +4,29 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.6.0] - 2026-08-25
+
+### Added
+
+- New Logit `LONG FORM` mode replacing SURPRISE on the home screen.
+- Randomized long-continuation questions with six multi-sentence-style candidate continuations.
+- Native llama.cpp sequence scoring JNI path that evaluates every continuation token rather than only the first next-token logit.
+- Per-candidate sum log probability, average token log probability, and continuation token count.
+- Compact 2×3 long-text answer grid designed to stay mostly within one phone viewport.
+- LONG FORM result page showing `MODEL PREFERS`, the player's pick, six-candidate score ranking, and relative score bars.
+
+### Changed
+
+- Logit module now exposes TOP TOKEN / RANKING / LONG FORM.
+- LONG FORM ranking uses average per-token log probability so differently tokenized candidates are not trivially biased toward the shortest sequence.
+- The existing LFM2.5-230M causal model is reused for LONG FORM; no additional model download is required.
+
+### Upgrade
+
+- Release target increased to `0.6.0` (`versionCode 7`).
+- Package name and stable development signature are unchanged, so v0.5.1 can update directly without deleting downloaded models.
+- CI injects the release version before build so the existing signing configuration does not need to be rewritten.
+
 ## [0.5.1] - 2026-08-25
 
 ### Fixed
