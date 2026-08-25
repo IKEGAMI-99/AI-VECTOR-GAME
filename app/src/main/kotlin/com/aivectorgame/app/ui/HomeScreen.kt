@@ -115,7 +115,7 @@ internal fun HomeScreen(onMode: (GameMode) -> Unit) {
             modes = listOf(
                 GameMode.LOGIT_TOP_TOKEN,
                 GameMode.LOGIT_RANKING,
-                GameMode.LOGIT_SURPRISE,
+                GameMode.LOGIT_LONG_FORM,
             ),
             modelManager = modelManager,
             onInstalled = { causalInstalled = true },
