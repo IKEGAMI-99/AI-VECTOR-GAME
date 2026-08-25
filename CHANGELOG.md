@@ -4,6 +4,24 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.3.0] - 2026-08-25
+
+### Changed
+
+- Rebuilt the visual system around a darker glass/telemetry aesthetic with atmospheric gradients, low-saturation neon accents, compact HUD typography, and more deliberate hierarchy.
+- Redesigned the home screen, update module, model cards, quiz screens, result screens, score HUD, answer tiles, probability visualization, and 3D vector view.
+- Embedding and Logit modes now use dedicated question and result pages. Selecting an answer immediately leaves the question page and opens a result page instead of appending results below the choices.
+- Result pages keep the NEXT action fixed at the bottom so the player does not need to scroll to continue.
+- Embedding result view emphasizes the interactive MDS projection and cosine ranking.
+- Logit result view emphasizes model confidence, Top-1 token, full Top-6 distribution, raw logits, and full-vocabulary Softmax probability.
+
+### Upgrade
+
+- Version increased to `0.3.0` (`versionCode 3`).
+- Package name remains `com.aivectorgame.app`.
+- v0.3.0 uses the same stable development signing key introduced in v0.2.0, so **v0.2.0 can be updated directly without uninstalling the app or deleting downloaded models**.
+- The v0.2.0 in-app GitHub updater can discover and install the v0.3.0 GitHub Release once CI publishes it.
+
 ## [0.2.0] - 2026-08-25
 
 ### Added
