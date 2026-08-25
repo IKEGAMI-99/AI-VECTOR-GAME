@@ -23,6 +23,12 @@ object NativeEngine {
         val probability: Float,
     )
 
+    data class ContinuationScore(
+        val sumLogProb: Float,
+        val avgLogProb: Float,
+        val tokenCount: Int,
+    )
+
     fun isNativeReady(): Boolean = nativeReady.get()
     fun isCausalLoaded(): Boolean = causalLoaded.get()
     fun isEmbeddingLoaded(): Boolean = embeddingLoaded.get()
@@ -64,6 +70,27 @@ object NativeEngine {
     }
 
     @Synchronized
+    fun scoreContinuations(prompt: String, candidates: List<String>): Result<List<ContinuationScore>> = runCatching {
+        check(causalLoaded.get()) { "Causal model is not loaded" }
+        require(candidates.isNotEmpty()) { "No continuation candidates" }
+        val raw = nativeScoreContinuations(prompt, candidates.toTypedArray())
+        val array = JSONArray(raw)
+        check(array.length() == candidates.size) { nativeLastError().ifBlank { "Continuation scoring returned an incomplete result" } }
+        buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    ContinuationScore(
+                        sumLogProb = obj.getDouble("sum_logprob").toFloat(),
+                        avgLogProb = obj.getDouble("avg_logprob").toFloat(),
+                        tokenCount = obj.getInt("tokens"),
+                    )
+                )
+            }
+        }
+    }
+
+    @Synchronized
     fun embedding(text: String): Result<FloatArray> = runCatching {
         check(embeddingLoaded.get()) { "Embedding model is not loaded" }
         nativeEmbedding(text)
@@ -72,6 +99,7 @@ object NativeEngine {
     private external fun nativeLoadCausal(path: String): Boolean
     private external fun nativeLoadEmbedding(path: String): Boolean
     private external fun nativePredictTopTokens(prompt: String, topK: Int): String
+    private external fun nativeScoreContinuations(prompt: String, candidates: Array<String>): String
     private external fun nativeEmbedding(text: String): FloatArray
     private external fun nativeLastError(): String
 }
