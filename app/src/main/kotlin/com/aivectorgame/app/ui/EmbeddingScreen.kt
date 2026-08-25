@@ -208,12 +208,12 @@ private fun VectorQuestionPage(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         GameTopBar(mode.shortTitle, "RANDOM SEMANTIC ROUND", Purple, onBack)
         ScoreHud(round, score, streak, Purple)
 
-        GlassPanel(accent = Purple, padding = 16.dp) {
+        GlassPanel(accent = Purple, padding = if (mode == GameMode.EMBEDDING_RANKING) 14.dp else 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(mode.code, color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
@@ -294,8 +294,8 @@ private fun VectorResultPage(
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
-                .padding(bottom = 70.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+                .padding(bottom = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             GameTopBar("${mode.shortTitle} / RESULT", "COSINE → 3D", Purple, onBack)
             ScoreHud(round, score, streak, Purple)
@@ -339,11 +339,11 @@ private fun VectorResultPage(
                 labels = listOf(target) + choices,
                 points = MdsProjector.project(vectors),
                 scores = listOf(1f) + scores,
-                height = if (rankingMode) 190.dp else 220.dp,
+                height = if (rankingMode) 145.dp else 185.dp,
             )
 
             if (!rankingMode) {
-                GlassPanel(accent = Purple, padding = 11.dp) {
+                GlassPanel(accent = Purple, padding = 9.dp) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("NEAREST → FARTHEST", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
                         Text("TARGET / $target", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -356,6 +356,7 @@ private fun VectorResultPage(
                                     choices.getOrElse(index) { "?" },
                                     color = if (rank == 0) Green else TextMain,
                                     fontSize = 10.sp,
+                                    lineHeight = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
