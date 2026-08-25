@@ -2,7 +2,7 @@ name: Android CI + Release
 
 on:
   push:
-    branches: [ main, feat/long-form-v0.6 ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
