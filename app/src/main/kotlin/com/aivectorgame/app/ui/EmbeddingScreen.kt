@@ -63,6 +63,20 @@ internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
     var rewardPoints by remember(seed) { mutableIntStateOf(0) }
     var answerRank by remember(seed) { mutableIntStateOf(-1) }
     var orderAccuracy by remember(seed) { mutableIntStateOf(0) }
+    var answerSeconds by remember(seed) { mutableIntStateOf(ROUND_TIME_LIMIT_SECONDS) }
+
+    val timer = rememberRoundTimer(
+        roundKey = seed,
+        enabled = stage == VectorStage.QUESTION && !loading,
+        onTimeout = {
+            rewardPoints = 0
+            answerRank = -1
+            orderAccuracy = 0
+            answerSeconds = 0
+            streak = 0
+            stage = VectorStage.RESULT
+        },
+    )
 
     LaunchedEffect(seed, live) {
         if (!live) return@LaunchedEffect
@@ -102,14 +116,16 @@ internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
 
     fun awardSingle(index: Int) {
         selected = index
+        answerSeconds = timer.secondsRemaining
         val rank = truthOrder.indexOf(index).coerceAtLeast(0)
         answerRank = rank
-        val gained = when (rank) {
+        val base = when (rank) {
             0 -> 120 + min(streak, 5) * 20
             1 -> 50
             2 -> 20
             else -> 0
         }
+        val gained = applyTimeMultiplier(base, answerSeconds)
         rewardPoints = gained
         score += gained
         if (rank == 0) {
@@ -122,9 +138,11 @@ internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
     }
 
     fun awardRanking() {
+        answerSeconds = timer.secondsRemaining
         val accuracy = rankingAccuracy(userOrder, nearestOrder)
         orderAccuracy = accuracy
-        val gained = (accuracy * 2) + if (accuracy == 100) min(streak, 5) * 30 else 0
+        val base = (accuracy * 2) + if (accuracy == 100) min(streak, 5) * 30 else 0
+        val gained = applyTimeMultiplier(base, answerSeconds)
         rewardPoints = gained
         score += gained
         if (accuracy == 100) {
@@ -142,6 +160,7 @@ internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
             round = round,
             score = score,
             streak = streak,
+            secondsRemaining = timer.secondsRemaining,
             target = question.target,
             choices = question.choices,
             userOrder = userOrder,
@@ -171,6 +190,8 @@ internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
             answerRank = answerRank,
             orderAccuracy = orderAccuracy,
             rewardPoints = rewardPoints,
+            answerSeconds = answerSeconds,
+            timedOut = timer.timedOut,
             scores = scores,
             vectors = vectors,
             nearestOrder = nearestOrder,
@@ -191,6 +212,7 @@ private fun VectorQuestionPage(
     round: Int,
     score: Int,
     streak: Int,
+    secondsRemaining: Int,
     target: String,
     choices: List<String>,
     userOrder: List<Int>,
@@ -211,7 +233,7 @@ private fun VectorQuestionPage(
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         GameTopBar(mode.shortTitle, "RANDOM SEMANTIC ROUND", Purple, onBack)
-        ScoreHud(round, score, streak, Purple)
+        TimedScoreHud(round, score, streak, secondsRemaining, Purple)
 
         GlassPanel(accent = Purple, padding = if (mode == GameMode.EMBEDDING_RANKING) 14.dp else 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -280,6 +302,8 @@ private fun VectorResultPage(
     answerRank: Int,
     orderAccuracy: Int,
     rewardPoints: Int,
+    answerSeconds: Int,
+    timedOut: Boolean,
     scores: List<Float>,
     vectors: List<FloatArray>,
     nearestOrder: List<Int>,
@@ -300,10 +324,12 @@ private fun VectorResultPage(
             GameTopBar("${mode.shortTitle} / RESULT", "COSINE → 3D", Purple, onBack)
             ScoreHud(round, score, streak, Purple)
 
-            if (rankingMode) {
+            if (timedOut) {
+                TimeoutResultPanel(Purple)
+            } else if (rankingMode) {
                 CompactResultPanel(
                     title = "ORDER RESULT",
-                    headline = "$orderAccuracy% PAIRWISE ACCURACY",
+                    headline = "$orderAccuracy% PAIRWISE  •  ${timeScoreLabel(answerSeconds)}",
                     detailLeft = choices.getOrElse(nearestOrder.firstOrNull() ?: 0) { "?" },
                     detailRight = userOrder.firstOrNull()?.let { choices.getOrElse(it) { "?" } } ?: "—",
                     points = rewardPoints,
@@ -314,7 +340,7 @@ private fun VectorResultPage(
             } else {
                 CompactResultPanel(
                     title = if (answerRank == 0) "VECTOR ANSWER" else "MODEL ANSWER",
-                    headline = if (answerRank == 0) "MODEL TOP MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}",
+                    headline = (if (answerRank == 0) "MODEL TOP MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}") + "  •  ${timeScoreLabel(answerSeconds)}",
                     detailLeft = choices.getOrElse(bestIndex) { "?" },
                     detailRight = selectedIndex?.let { choices.getOrElse(it) { "?" } } ?: "—",
                     points = rewardPoints,
