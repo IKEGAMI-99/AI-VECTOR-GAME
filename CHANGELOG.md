@@ -4,6 +4,28 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.7.0] - 2026-08-25
+
+### Added
+
+- 30-second time limit for every playable mode: Embedding NEAREST / FARTHEST / RANKING and Logit TOP TOKEN / RANKING / LONG FORM.
+- Four-cell question HUD showing ROUND / SCORE / CHAIN / TIME without increasing vertical screen usage.
+- Monotonic round countdown that starts only after LIVE inference or DEMO setup has finished and answer controls are enabled.
+- Automatic TIME OUT result at 0 seconds with 0 points and chain reset.
+- Speed-based score multiplier displayed in result screens.
+
+### Scoring
+
+- Time multiplier scales linearly from `×1.50` with 30 seconds remaining to `×0.75` near timeout.
+- Approximately `×1.25` at 20 seconds and `×1.00` at 10 seconds.
+- Single-answer partial points and RANKING pairwise-accuracy points use the same multiplier.
+- Answer time is locked at submission so Result-page rendering does not change awarded points.
+
+### Upgrade
+
+- Release target increased to `0.7.0` (`versionCode 8`).
+- Package name and stable development signature are unchanged, so v0.6.0 can update directly without deleting downloaded models.
+
 ## [0.6.0] - 2026-08-25
 
 ### Added
