@@ -4,6 +4,28 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.2.0] - 2026-08-25
+
+### Added
+
+- Separate LIVE and DEMO question banks so model-backed sessions no longer begin with the same questions as demo mode.
+- Visible LIVE proof badges after successful native inference (`llama.cpp/JNI`, demo table not used).
+- Session score, round counter, streak bonuses, Top-2/Top-3 partial rewards, and stronger success feedback.
+- Haptic reward on Top-1 / closest-vector hits.
+- In-app GitHub update checker, APK downloader, and Android package-installer handoff.
+- GitHub Release publishing from CI so the in-app updater has a stable release source.
+- Stable sideload signing key for update-compatible APKs from v0.2.0 onward.
+
+### Fixed
+
+- Content now respects Android safe drawing insets and no longer sits under the status bar / display cutout.
+- Version increased to `0.2.0` (`versionCode 2`).
+
+### Important
+
+- v0.1.0 CI APKs were signed by GitHub runner-generated debug keys. Because those signatures changed between builds, Android reported an app conflict. v0.2.0 introduces a stable development signature. The currently installed v0.1.0 must be uninstalled once; v0.2.0 and later builds can update each other normally.
+- The committed signing key is intentionally a development/sideload key, not a Play Store production key.
+
 ## [0.1.0] - 2026-08-25
 
 ### Added

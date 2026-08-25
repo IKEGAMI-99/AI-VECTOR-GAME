@@ -13,8 +13,8 @@ android {
         applicationId = "com.aivectorgame.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -39,12 +39,25 @@ android {
         }
     }
 
+    // Stable development signing is intentional for sideload updates from GitHub.
+    // This is NOT a Play Store production signing key.
+    signingConfigs {
+        create("stableDev") {
+            storeFile = file("keys/ai-vector-game-dev.jks")
+            storePassword = "vector2026"
+            keyAlias = "aivectorgame"
+            keyPassword = "vector2026"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("stableDev")
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("stableDev")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -90,6 +103,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")

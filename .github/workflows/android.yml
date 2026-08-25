@@ -1,4 +1,4 @@
-name: Android CI
+name: Android CI + Release
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-debug-apk:
+  build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -44,14 +44,14 @@ jobs:
       - name: Android lint
         run: gradle :app:lintDebug --stacktrace --no-daemon
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace --no-daemon
+      - name: Build debug and release APKs
+        run: gradle :app:assembleDebug :app:assembleRelease --stacktrace --no-daemon
 
-      - name: Verify APK structure
+      - name: Verify release APK structure and signature
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           unzip -Z1 "$APK" > /tmp/apk-files.txt
           grep -Fxq "classes.dex" /tmp/apk-files.txt
@@ -63,13 +63,45 @@ jobs:
           NATIVE="/tmp/apk-check/lib/arm64-v8a/libai_vector_native.so"
           readelf -Ws "$NATIVE" | grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens"
           readelf -Ws "$NATIVE" | grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativeEmbedding"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           sha256sum "$APK"
 
-      - name: Upload debug APK
-        if: success()
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare named APK
+        shell: bash
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk \
+            "AI-VECTOR-GAME-v${{ steps.version.outputs.version }}.apk"
+
+      - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ai-vector-game-v0.1.0-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: ai-vector-game-v${{ steps.version.outputs.version }}-release
+          path: AI-VECTOR-GAME-v${{ steps.version.outputs.version }}.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish or refresh GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          APK="AI-VECTOR-GAME-v${{ steps.version.outputs.version }}.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" \
+              --title "AI VECTOR GAME $TAG" \
+              --generate-notes
+          fi

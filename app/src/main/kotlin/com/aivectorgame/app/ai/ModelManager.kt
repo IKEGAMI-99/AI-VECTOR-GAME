@@ -1,6 +1,7 @@
 package com.aivectorgame.app.ai
 
 import android.content.Context
+import com.aivectorgame.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -59,7 +60,7 @@ class ModelManager(private val context: Context) {
                 connectTimeout = 20_000
                 readTimeout = 60_000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "AI-VECTOR-GAME/0.1.0")
+                setRequestProperty("User-Agent", "AI-VECTOR-GAME/${BuildConfig.VERSION_NAME}")
             }
 
             try {
