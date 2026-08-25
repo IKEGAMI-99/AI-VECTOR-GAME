@@ -2,7 +2,7 @@ name: Android CI + Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/long-form-v0.6 ]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Apply app version
+        shell: bash
+        run: |
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 7/' app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.6.0"/' app/build.gradle.kts
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -61,6 +67,7 @@ jobs:
           unzip -q "$APK" "lib/arm64-v8a/libai_vector_native.so" -d /tmp/apk-check
           readelf -Ws /tmp/apk-check/lib/arm64-v8a/libai_vector_native.so > /tmp/native-symbols.txt
           grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens" /tmp/native-symbols.txt
+          grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativeScoreContinuations" /tmp/native-symbols.txt
           grep -q "Java_com_aivectorgame_app_ai_NativeEngine_nativeEmbedding" /tmp/native-symbols.txt
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           sha256sum "$APK"
