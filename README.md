@@ -2,18 +2,18 @@
 
 Androidで、AIの **Embedding（意味空間）** と **Logit（次トークン予測）** をゲームとして体験するアプリです。
 
-**Current version: v0.5.1**
+**Current release target: v0.6.0**
 
-## v0.5.1
+## v0.6.0
 
-v0.5.1はRANKING画面の実機レイアウト修正と、回答比較の見やすさ改善が中心です。
+v0.6.0ではLogitの `SURPRISE` をホーム画面から外し、より本質的な **LONG FORM** モードへ置き換えました。
 
-- RANKING questionの選択済みslot / candidate / LOCK buttonをcompact化
-- 日本語文字を切らずに、LOCK RANKINGをAndroid navigation areaより上へ収める
-- Embedding resultの3D panelと縦spacingを再調整し、下部cosine順位を固定NEXTに隠さない
-- 6項目RANKINGでは結果hero内の冗長なCORRECT / YOUR ANSWER小カードを廃止
-- `AI ORDER` と `YOUR ORDER` を左右に並べ、6順位を同じ高さで比較
-- 自分の各順位をpositionごとに緑✓ / 赤×で表示
+- 6つの長文候補から、LFMが最も自然だと評価する続きを当てる
+- 各候補を全文tokenizeし、先頭だけではなく最後のtokenまで実モデルで採点
+- sequence probabilityの単純な積は長い候補ほど不利になるため、判定には **average token log-probability** を使用
+- 結果画面で6候補の平均logP・token数・相対順位を表示
+- 長文でもスクロールを増やさない2列×3候補UI
+- 問題は複数シナリオと文章候補から端末内で毎ラウンド再構成
 
 ## Six game modes
 
@@ -33,11 +33,23 @@ Resultページでは実Embeddingをclassical MDSで3次元へ射影し、drag r
 
 - **TOP TOKEN** — 次トークン確率1位を当てる
 - **RANKING** — 6候補をSoftmax確率の高い順に並べる
-- **SURPRISE** — 人間なら自然だと思う補完とAIのTop-1がズレた問題だけを出す
+- **LONG FORM** — 6つの長文候補を全文採点し、モデルが最も高く評価する続きを当てる
 
-Logit問題も文章テンプレートと値を端末内で再構成します。LIVEモードでは **LiquidAI/LFM2.5-230M-GGUF Q4_K_M** を1回forwardし、最終位置logitから語彙全体Softmaxを計算してTop-6を生成します。
+TOP TOKEN / RANKINGでは **LiquidAI/LFM2.5-230M-GGUF Q4_K_M** を1回forwardし、最終位置logitから語彙全体Softmaxを計算します。
 
-SURPRISEでは候補プロンプトを生成して実推論し、`humanExpected` とモデルTop-1を比較します。一致した問題は捨て、ズレた問題を見つけるまで最大12候補をscanします。
+LONG FORMでは各候補を複数tokenへ分解し、promptに続く各tokenのconditional log probabilityを順番に取得します。候補ごとの総log probabilityも計算しますが、ゲーム順位には長さの影響を抑えるため `sum(log P(token)) / token_count` を使います。
+
+```text
+Prompt
+  ↓
+Candidate A → t1 → t2 → t3 → ... → avg logP
+Candidate B → t1 → t2 → t3 → ... → avg logP
+Candidate C → ...
+  ↓
+6候補を比較
+  ↓
+MODEL PREFERS
+```
 
 ## Theme system
 
@@ -47,19 +59,22 @@ LIGHTでは背景を単純に白反転するのではなく、本文・補助文
 
 ## Random question system
 
-問題生成はクラウドAPIを使わず、APK内の軽量なprocedural generatorで行います。
+問題生成はクラウドAPIを使わず、APK内のprocedural generatorで行います。
 
 ```text
 QuestionFactory
 ├─ Semantic clusters
-│   └─ target + related words + distractors → randomized 6 choices
+│   └─ target + related words + distractors
 │
-└─ Prompt recipes
-    └─ randomized prompt + human expectation
-        └─ LIVE: llama.cpp inference → Top-6
+├─ Causal prompt recipes
+│   └─ randomized prompt → LIVE Top-6
+│
+└─ LongFormQuestionFactory
+    └─ scenario + prompt variant + 6 continuation candidates
+        └─ LIVE: full multi-token sequence scoring
 ```
 
-モデル未取得時も同じランダム問題構造でDEMO採点されるため、6モードすべて遊べます。
+モデル未取得時も同じゲーム構造でDEMO採点されるため、6モードすべて遊べます。
 
 ## Game system
 
@@ -70,6 +85,7 @@ QuestionFactory
 - Top-2 / Top-3 partial score for single-choice modes
 - Pairwise ranking accuracy for RANKING modes
 - Side-by-side AI / player ranking comparison
+- LONG FORM sequence likelihood ranking
 - Correct-answer haptic feedback
 - Dedicated Result page
 - Bottom-fixed RANDOM NEXT action
@@ -80,7 +96,7 @@ QuestionFactory
 
 Question画面は大きな縦スクロールを前提にせず、compact top bar / score HUD / prompt panel / 2列×3候補grid / ranking tap-order slotsを1 viewportへ集約しています。
 
-v0.5.1ではRANKING controlsの垂直サイズを再調整し、文字サイズを維持しながら操作ボタンが画面外へ落ちないようにしています。
+LONG FORMも長文候補を2列×3段へ収め、回答後は専用Result画面へ移動します。
 
 ## On-device models
 
@@ -88,7 +104,7 @@ v0.5.1ではRANKING controlsの垂直サイズを再調整し、文字サイズ�
 
 | Module | Model | Quantization | Approx. size |
 | --- | --- | --- | ---: |
-| Logit | LFM2.5-230M | Q4_K_M | ~153 MB |
+| Logit / Long Form | LFM2.5-230M | Q4_K_M | ~153 MB |
 | Embedding | LFM2.5-Embedding-350M | Q4_K_M | ~229 MB |
 
 ## In-app updates
@@ -97,13 +113,11 @@ v0.5.1ではRANKING controlsの垂直サイズを再調整し、文字サイズ�
 
 ### Upgrade compatibility
 
-- v0.2.0以降は `app/keys/ai-vector-game-dev.jks` の固定development署名を使用しています。
+- v0.2.0以降は同じ固定development署名を使用しています。
 - package名は `com.aivectorgame.app` のままです。
-- **v0.5.0 → v0.5.1はアンインストール不要で直接アップデート可能です。**
-- v0.5.1は `versionCode 6` です。
-- 通常の上書き更新なら、既に取得済みのモデルも保持されます。
-
-この鍵は個人開発・GitHub sideload向けのdevelopment keyです。Play Store公開用production keyとしては使用しません。
+- **v0.5.1 → v0.6.0はアンインストール不要で直接アップデート可能**です。
+- v0.6.0 release APKは `versionCode 7` でビルドします。
+- 通常の上書き更新なら、既に取得済みのLFMモデルも保持されます。
 
 ## Architecture
 
@@ -113,17 +127,19 @@ Android / Jetpack Compose
 ├─ ThemeController
 │   └─ persistent LIGHT / DARK palette
 │
-├─ QuestionFactory
+├─ Question generators
 │   ├─ randomized semantic questions
-│   └─ randomized causal prompts / surprise scan
+│   ├─ randomized causal prompts
+│   └─ randomized long continuations
 │
-├─ EMBEDDING modes
+├─ EMBEDDING
 │   └─ JNI → llama.cpp → LFM2.5 Embedding 350M
 │       └─ cosine similarity → ranking → MDS 3D
 │
-├─ LOGIT modes
+├─ LOGIT
 │   └─ JNI → llama.cpp → LFM2.5 230M
-│       └─ final-position logits → full-vocabulary Softmax → Top-6
+│       ├─ final-position logits → Softmax → Top-6
+│       └─ per-token continuation logits → sequence avg logP
 │
 └─ Update Manager
     └─ GitHub Releases API → signed APK → Android Package Installer
@@ -146,18 +162,18 @@ gradle :app:assembleDebug :app:assembleRelease --stacktrace
 
 The APK targets `arm64-v8a`.
 
-GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK structure/native JNI symbols/signature, uploads a build artifact, and publishes the current `versionName` as a GitHub Release asset.
+GitHub Actions performs Android Lint, builds debug/release APKs, verifies APK structure/native JNI symbols/signature, uploads a build artifact, and publishes the release APK.
 
 ## Versioning
 
-- `versionName`: `0.5.1`
-- `versionCode`: `6`
+- release target: `0.6.0`
+- release `versionCode`: `7`
 - current version is shown on the home screen
 - release changes are recorded in `CHANGELOG.md`
 
 ## Privacy
 
-Embedding and logit inference run on-device. Network access is used only for model downloads, GitHub update checks, and update APK downloads.
+Embedding, next-token inference, and LONG FORM sequence scoring run on-device. Network access is used only for model downloads, GitHub update checks, and update APK downloads.
 
 ## Credits / licenses
 
