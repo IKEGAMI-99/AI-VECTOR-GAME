@@ -73,6 +73,19 @@ internal fun LongFormGame(onBack: () -> Unit) {
     var streak by remember { mutableIntStateOf(0) }
     var rewardPoints by remember(seed) { mutableIntStateOf(0) }
     var answerRank by remember(seed) { mutableIntStateOf(-1) }
+    var answerSeconds by remember(seed) { mutableIntStateOf(ROUND_TIME_LIMIT_SECONDS) }
+
+    val timer = rememberRoundTimer(
+        roundKey = seed,
+        enabled = stage == LongFormStage.QUESTION && !loading,
+        onTimeout = {
+            rewardPoints = 0
+            answerRank = -1
+            answerSeconds = 0
+            streak = 0
+            stage = LongFormStage.RESULT
+        },
+    )
 
     LaunchedEffect(seed, live) {
         if (!live) return@LaunchedEffect
@@ -101,14 +114,16 @@ internal fun LongFormGame(onBack: () -> Unit) {
 
     fun choose(index: Int) {
         selectedIndex = index
+        answerSeconds = timer.secondsRemaining
         val rank = truthOrder.indexOf(index).coerceAtLeast(0)
         answerRank = rank
-        val gained = when (rank) {
+        val base = when (rank) {
             0 -> 200 + min(streak, 5) * 30
             1 -> 80
             2 -> 35
             else -> 0
         }
+        val gained = applyTimeMultiplier(base, answerSeconds)
         rewardPoints = gained
         score += gained
         if (rank == 0) {
@@ -125,6 +140,7 @@ internal fun LongFormGame(onBack: () -> Unit) {
             round = round,
             score = score,
             streak = streak,
+            secondsRemaining = timer.secondsRemaining,
             prompt = question.prompt,
             choices = question.choices,
             loading = loading,
@@ -147,6 +163,8 @@ internal fun LongFormGame(onBack: () -> Unit) {
             selectedIndex = selectedIndex,
             answerRank = answerRank,
             rewardPoints = rewardPoints,
+            answerSeconds = answerSeconds,
+            timedOut = timer.timedOut,
             live = live,
             liveResult = liveResult,
             onBack = onBack,
@@ -163,6 +181,7 @@ private fun LongFormQuestionPage(
     round: Int,
     score: Int,
     streak: Int,
+    secondsRemaining: Int,
     prompt: String,
     choices: List<String>,
     loading: Boolean,
@@ -179,7 +198,7 @@ private fun LongFormQuestionPage(
         verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         GameTopBar("LONG FORM", "SEQUENCE LIKELIHOOD", Cyan, onBack)
-        ScoreHud(round, score, streak, Cyan)
+        TimedScoreHud(round, score, streak, secondsRemaining, Cyan)
 
         GlassPanel(accent = Cyan, padding = 14.dp) {
             Row(
@@ -314,12 +333,14 @@ private fun LongFormResultPage(
     selectedIndex: Int?,
     answerRank: Int,
     rewardPoints: Int,
+    answerSeconds: Int,
+    timedOut: Boolean,
     live: Boolean,
     liveResult: Boolean,
     onBack: () -> Unit,
     onNext: () -> Unit,
 ) {
-    val success = answerRank == 0
+    val success = !timedOut && answerRank == 0
     val statusColor = if (success) Green else Red
     val selected = selectedIndex ?: -1
 
@@ -334,49 +355,54 @@ private fun LongFormResultPage(
             GameTopBar("LONG FORM / RESULT", "AVG TOKEN LOGP", Cyan, onBack)
             ScoreHud(round, score, streak, Cyan)
 
-            GlassPanel(accent = statusColor, padding = 14.dp) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("SEQUENCE ANSWER", color = statusColor, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
-                        Text(
-                            if (success) "✓ CORRECT" else "✕ WRONG  /  RANK ${answerRank + 1}",
-                            color = statusColor,
-                            fontSize = 24.sp,
-                            lineHeight = 28.sp,
-                            fontWeight = FontWeight.Black,
-                        )
+            if (timedOut) {
+                TimeoutResultPanel(Cyan)
+            } else {
+                GlassPanel(accent = statusColor, padding = 14.dp) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("SEQUENCE ANSWER", color = statusColor, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                            Text(
+                                if (success) "✓ CORRECT" else "✕ WRONG  /  RANK ${answerRank + 1}",
+                                color = statusColor,
+                                fontSize = 24.sp,
+                                lineHeight = 28.sp,
+                                fontWeight = FontWeight.Black,
+                            )
+                            Text(timeScoreLabel(answerSeconds), color = TextSub, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(if (rewardPoints > 0) "+$rewardPoints" else "0", color = Cyan, fontSize = 27.sp, fontWeight = FontWeight.Black)
+                            Text("PTS", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(if (rewardPoints > 0) "+$rewardPoints" else "0", color = Cyan, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                        Text("PTS", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
-                    }
-                }
 
-                Text("MODEL PREFERS", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
-                Text(
-                    choices.getOrElse(bestIndex) { "?" },
-                    color = TextMain,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!success && selected >= 0) {
-                    Text("YOUR PICK", color = Red, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                    Text("MODEL PREFERS", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
                     Text(
-                        choices.getOrElse(selected) { "?" },
-                        color = TextSub,
-                        fontSize = 11.sp,
-                        lineHeight = 16.sp,
+                        choices.getOrElse(bestIndex) { "?" },
+                        color = TextMain,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (!success && selected >= 0) {
+                        Text("YOUR PICK", color = Red, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                        Text(
+                            choices.getOrElse(selected) { "?" },
+                            color = TextSub,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 
