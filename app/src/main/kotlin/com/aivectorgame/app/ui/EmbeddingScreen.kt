@@ -216,12 +216,12 @@ private fun VectorQuestionPage(
         GlassPanel(accent = Purple, padding = 16.dp) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(mode.code, color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                    Text(target, color = TextMain, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(mode.code, color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text(target, color = TextMain, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), color = Purple, strokeWidth = 2.dp)
             }
-            Text(mode.instruction, color = TextSub, fontSize = 11.sp)
+            Text(mode.instruction, color = TextSub, fontSize = 12.sp)
             Text(
                 when {
                     live && liveResult -> "LIVE / REAL EMBEDDING VECTORS"
@@ -234,15 +234,15 @@ private fun VectorQuestionPage(
                     error != null -> Yellow
                     else -> TextDim
                 },
-                fontSize = 8.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 0.8.sp,
+                letterSpacing = 0.7.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        Text("CANDIDATES / 06", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+        Text("CANDIDATES / 06", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
 
         if (mode == GameMode.EMBEDDING_RANKING) {
             RankingComposer(
@@ -294,7 +294,7 @@ private fun VectorResultPage(
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
-                .padding(bottom = 68.dp),
+                .padding(bottom = 70.dp),
             verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             GameTopBar("${mode.shortTitle} / RESULT", "COSINE → 3D", Purple, onBack)
@@ -302,18 +302,19 @@ private fun VectorResultPage(
 
             if (rankingMode) {
                 CompactResultPanel(
-                    title = "ORDER MATCH",
-                    headline = "$orderAccuracy% PAIRWISE",
+                    title = "ORDER RESULT",
+                    headline = "$orderAccuracy% PAIRWISE ACCURACY",
                     detailLeft = choices.getOrElse(nearestOrder.firstOrNull() ?: 0) { "?" },
                     detailRight = userOrder.firstOrNull()?.let { choices.getOrElse(it) { "?" } } ?: "—",
                     points = rewardPoints,
                     accent = Purple,
                     success = orderAccuracy == 100,
+                    rankingAccuracy = orderAccuracy,
                 )
             } else {
                 CompactResultPanel(
-                    title = if (answerRank == 0) "VECTOR LOCK" else "MODEL REVEAL",
-                    headline = if (answerRank == 0) "CORRECT" else "RANK ${answerRank + 1}",
+                    title = if (answerRank == 0) "VECTOR ANSWER" else "MODEL ANSWER",
+                    headline = if (answerRank == 0) "MODEL TOP MATCH" else "YOUR PICK WAS RANK ${answerRank + 1}",
                     detailLeft = choices.getOrElse(bestIndex) { "?" },
                     detailRight = selectedIndex?.let { choices.getOrElse(it) { "?" } } ?: "—",
                     points = rewardPoints,
@@ -323,34 +324,44 @@ private fun VectorResultPage(
             }
 
             if (live && liveResult) {
-                Text("VERIFIED LIVE / REAL COSINE SCORES", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+                Text("VERIFIED LIVE / REAL COSINE SCORES", color = Green, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.7.sp)
+            }
+
+            if (rankingMode) {
+                RankingComparison(
+                    truthLabels = nearestOrder.map { choices.getOrElse(it) { "?" } },
+                    userLabels = userOrder.map { choices.getOrElse(it) { "?" } },
+                    accent = Purple,
+                )
             }
 
             VectorCloud(
                 labels = listOf(target) + choices,
                 points = MdsProjector.project(vectors),
                 scores = listOf(1f) + scores,
-                height = 220.dp,
+                height = if (rankingMode) 190.dp else 220.dp,
             )
 
-            GlassPanel(accent = Purple, padding = 11.dp) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("NEAREST → FARTHEST", color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
-                    Text("TARGET / $target", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    nearestOrder.forEachIndexed { rank, index ->
-                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("#${rank + 1}", color = if (rank == 0) Green else TextDim, fontSize = 7.sp, fontWeight = FontWeight.Black)
-                            Text(
-                                choices.getOrElse(index) { "?" },
-                                color = if (rank == 0) Green else TextMain,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text("%.2f".format(scores.getOrElse(index) { 0f }), color = TextDim, fontSize = 7.sp)
+            if (!rankingMode) {
+                GlassPanel(accent = Purple, padding = 11.dp) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("NEAREST → FARTHEST", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.0.sp)
+                        Text("TARGET / $target", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        nearestOrder.forEachIndexed { rank, index ->
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("#${rank + 1}", color = if (rank == 0) Green else TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                                Text(
+                                    choices.getOrElse(index) { "?" },
+                                    color = if (rank == 0) Green else TextMain,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text("%.2f".format(scores.getOrElse(index) { 0f }), color = TextDim, fontSize = 8.sp)
+                            }
                         }
                     }
                 }
