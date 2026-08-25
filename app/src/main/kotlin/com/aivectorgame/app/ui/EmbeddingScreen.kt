@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,58 +24,67 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aivectorgame.app.ai.ModelManager
 import com.aivectorgame.app.ai.NativeEngine
-import com.aivectorgame.app.game.GameData
+import com.aivectorgame.app.game.GameMode
+import com.aivectorgame.app.game.QuestionFactory
 import com.aivectorgame.app.math.MdsProjector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.min
+import kotlin.random.Random
 
 private enum class VectorStage { QUESTION, RESULT }
 
 @Composable
-internal fun EmbeddingGame(onBack: () -> Unit) {
+internal fun EmbeddingGame(mode: GameMode, onBack: () -> Unit) {
     val context = LocalContext.current
     val manager = remember { ModelManager(context) }
     val live = manager.isInstalled(ModelManager.EMBEDDING) && NativeEngine.isNativeReady()
-    val questions = if (live) GameData.embeddingLiveQuestions else GameData.embeddingDemoQuestions
     val haptic = LocalHapticFeedback.current
 
-    var questionIndex by remember { mutableIntStateOf(0) }
-    val question = questions[questionIndex % questions.size]
-    var stage by remember(questionIndex) { mutableStateOf(VectorStage.QUESTION) }
-    var selected by remember(questionIndex) { mutableStateOf<Int?>(null) }
-    var loading by remember(questionIndex) { mutableStateOf(live) }
-    var error by remember(questionIndex) { mutableStateOf<String?>(null) }
-    var liveResult by remember(questionIndex) { mutableStateOf(false) }
-    var scores by remember(questionIndex) { mutableStateOf(question.demoScores) }
-    var vectors by remember(questionIndex) { mutableStateOf(MdsProjector.demoVectors(question.demoScores)) }
+    var round by remember { mutableIntStateOf(1) }
+    var seed by remember { mutableIntStateOf(Random.nextInt()) }
+    val question = remember(seed) { QuestionFactory.embedding(seed) }
+
+    var stage by remember(seed) { mutableStateOf(VectorStage.QUESTION) }
+    var selected by remember(seed) { mutableStateOf<Int?>(null) }
+    var userOrder by remember(seed) { mutableStateOf(emptyList<Int>()) }
+    var loading by remember(seed) { mutableStateOf(live) }
+    var error by remember(seed) { mutableStateOf<String?>(null) }
+    var liveResult by remember(seed) { mutableStateOf(false) }
+    var scores by remember(seed) { mutableStateOf(question.demoScores) }
+    var vectors by remember(seed) { mutableStateOf(MdsProjector.demoVectors(question.demoScores)) }
     var score by remember { mutableIntStateOf(0) }
     var streak by remember { mutableIntStateOf(0) }
-    var rewardPoints by remember(questionIndex) { mutableIntStateOf(0) }
-    var answerRank by remember(questionIndex) { mutableIntStateOf(-1) }
+    var rewardPoints by remember(seed) { mutableIntStateOf(0) }
+    var answerRank by remember(seed) { mutableIntStateOf(-1) }
+    var orderAccuracy by remember(seed) { mutableIntStateOf(0) }
 
-    LaunchedEffect(questionIndex, live) {
+    LaunchedEffect(seed, live) {
         if (!live) return@LaunchedEffect
         loading = true
+        error = null
         val result = withContext(Dispatchers.IO) {
             runCatching {
                 if (!NativeEngine.isEmbeddingLoaded()) {
                     NativeEngine.loadEmbedding(manager.fileFor(ModelManager.EMBEDDING)).getOrThrow()
                 }
                 val target = NativeEngine.embedding("query: ${question.target}").getOrThrow()
-                val candidateVectors = question.choices.map { NativeEngine.embedding("document: $it").getOrThrow() }
+                val candidateVectors = question.choices.map {
+                    NativeEngine.embedding("document: $it").getOrThrow()
+                }
                 val all = listOf(target) + candidateVectors
-                val sims = candidateVectors.map { MdsProjector.cosine(target, it) }
-                all to sims
+                val similarities = candidateVectors.map { MdsProjector.cosine(target, it) }
+                all to similarities
             }
         }
-        result.onSuccess { (all, sims) ->
+        result.onSuccess { (all, similarities) ->
             vectors = all
-            scores = sims
+            scores = similarities
             liveResult = true
         }.onFailure {
             error = it.message ?: "Embedding inference failed"
@@ -88,190 +93,275 @@ internal fun EmbeddingGame(onBack: () -> Unit) {
         loading = false
     }
 
-    val ranking = scores.indices.sortedByDescending { scores[it] }
-    val bestIndex = ranking.firstOrNull() ?: 0
+    val nearestOrder = scores.indices.sortedByDescending { scores[it] }
+    val truthOrder = when (mode) {
+        GameMode.EMBEDDING_FARTHEST -> scores.indices.sortedBy { scores[it] }
+        else -> nearestOrder
+    }
+    val bestIndex = truthOrder.firstOrNull() ?: 0
+
+    fun awardSingle(index: Int) {
+        selected = index
+        val rank = truthOrder.indexOf(index).coerceAtLeast(0)
+        answerRank = rank
+        val gained = when (rank) {
+            0 -> 120 + min(streak, 5) * 20
+            1 -> 50
+            2 -> 20
+            else -> 0
+        }
+        rewardPoints = gained
+        score += gained
+        if (rank == 0) {
+            streak += 1
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } else {
+            streak = 0
+        }
+        stage = VectorStage.RESULT
+    }
+
+    fun awardRanking() {
+        val accuracy = rankingAccuracy(userOrder, nearestOrder)
+        orderAccuracy = accuracy
+        val gained = (accuracy * 2) + if (accuracy == 100) min(streak, 5) * 30 else 0
+        rewardPoints = gained
+        score += gained
+        if (accuracy == 100) {
+            streak += 1
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } else {
+            streak = 0
+        }
+        stage = VectorStage.RESULT
+    }
 
     when (stage) {
         VectorStage.QUESTION -> VectorQuestionPage(
-            round = questionIndex + 1,
+            mode = mode,
+            round = round,
             score = score,
             streak = streak,
             target = question.target,
             choices = question.choices,
+            userOrder = userOrder,
             live = live,
             liveResult = liveResult,
             loading = loading,
             error = error,
             onBack = onBack,
-            onChoose = { index ->
-                selected = index
-                val rank = ranking.indexOf(index).coerceAtLeast(0)
-                answerRank = rank
-                val gained = when (rank) {
-                    0 -> 120 + min(streak, 5) * 20
-                    1 -> 50
-                    2 -> 20
-                    else -> 0
-                }
-                rewardPoints = gained
-                score += gained
-                if (rank == 0) {
-                    streak += 1
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                } else {
-                    streak = 0
-                }
-                stage = VectorStage.RESULT
+            onChoose = { awardSingle(it) },
+            onRankChoose = { index ->
+                if (index !in userOrder) userOrder = userOrder + index
             },
+            onRankReset = { userOrder = emptyList() },
+            onRankSubmit = { awardRanking() },
         )
 
         VectorStage.RESULT -> VectorResultPage(
-            round = questionIndex + 1,
+            mode = mode,
+            round = round,
             score = score,
             streak = streak,
             target = question.target,
             choices = question.choices,
-            selectedIndex = selected ?: 0,
+            selectedIndex = selected,
             bestIndex = bestIndex,
+            userOrder = userOrder,
             answerRank = answerRank,
+            orderAccuracy = orderAccuracy,
             rewardPoints = rewardPoints,
             scores = scores,
             vectors = vectors,
-            ranking = ranking,
+            nearestOrder = nearestOrder,
             live = live,
             liveResult = liveResult,
             onBack = onBack,
-            onNext = { questionIndex += 1 },
+            onNext = {
+                round += 1
+                seed = Random.nextInt()
+            },
         )
     }
 }
 
 @Composable
 private fun VectorQuestionPage(
+    mode: GameMode,
     round: Int,
     score: Int,
     streak: Int,
     target: String,
     choices: List<String>,
+    userOrder: List<Int>,
     live: Boolean,
     liveResult: Boolean,
     loading: Boolean,
     error: String?,
     onBack: () -> Unit,
     onChoose: (Int) -> Unit,
+    onRankChoose: (Int) -> Unit,
+    onRankReset: () -> Unit,
+    onRankSubmit: () -> Unit,
 ) {
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        GameTopBar("Vector / Semantic", if (live) "LFM2.5 EMBEDDING 350M" else "DEMO DATA", Purple, onBack)
+        GameTopBar(mode.shortTitle, "RANDOM SEMANTIC ROUND", Purple, onBack)
         ScoreHud(round, score, streak, Purple)
 
-        if (live && liveResult) {
-            LiveBadge("LIVE ENGINE  //  REAL EMBEDDING VECTORS")
-        } else if (error != null) {
-            LiveBadge("LIVE FALLBACK  //  ${error.take(48)}", isLive = false)
-        }
-
-        GlassPanel(accent = Purple, padding = 22.dp) {
-            Text("SEMANTIC TARGET", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.8.sp)
-            Text(target, color = TextMain, fontSize = 48.sp, lineHeight = 52.sp, fontWeight = FontWeight.Black)
-            Text("Embedding空間で最も近いvectorを選択", color = TextSub, fontSize = 12.sp)
-        }
-
-        if (loading) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Purple, strokeWidth = 2.dp)
-                Spacer(Modifier.width(10.dp))
-                Text("1024D vectors computing…", color = TextSub, fontSize = 11.sp)
+        GlassPanel(accent = Purple, padding = 16.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(mode.code, color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text(target, color = TextMain, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (loading) CircularProgressIndicator(modifier = Modifier.height(20.dp), color = Purple, strokeWidth = 2.dp)
             }
-        }
-
-        Text("CANDIDATES / 06", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-        choices.forEachIndexed { index, choice ->
-            ChoiceTile(
-                index = index,
-                text = choice,
-                accent = Purple,
-                enabled = !loading,
-                onClick = { onChoose(index) },
+            Text(mode.instruction, color = TextSub, fontSize = 11.sp)
+            Text(
+                when {
+                    live && liveResult -> "LIVE / REAL EMBEDDING VECTORS"
+                    error != null -> "DEMO FALLBACK / ${error.take(44)}"
+                    live -> "VECTOR COMPUTE"
+                    else -> "DEMO VECTOR SPACE"
+                },
+                color = when {
+                    live && liveResult -> Green
+                    error != null -> Yellow
+                    else -> TextDim
+                },
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.8.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.height(20.dp))
+
+        Text("CANDIDATES / 06", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+
+        if (mode == GameMode.EMBEDDING_RANKING) {
+            RankingComposer(
+                labels = choices,
+                order = userOrder,
+                accent = Purple,
+                enabled = !loading,
+                onChoose = onRankChoose,
+                onReset = onRankReset,
+                onSubmit = onRankSubmit,
+            )
+        } else {
+            CompactChoiceGrid(
+                labels = choices,
+                accent = Purple,
+                enabled = !loading,
+                onChoose = onChoose,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
     }
 }
 
 @Composable
 private fun VectorResultPage(
+    mode: GameMode,
     round: Int,
     score: Int,
     streak: Int,
     target: String,
     choices: List<String>,
-    selectedIndex: Int,
+    selectedIndex: Int?,
     bestIndex: Int,
+    userOrder: List<Int>,
     answerRank: Int,
+    orderAccuracy: Int,
     rewardPoints: Int,
     scores: List<Float>,
     vectors: List<FloatArray>,
-    ranking: List<Int>,
+    nearestOrder: List<Int>,
     live: Boolean,
     liveResult: Boolean,
     onBack: () -> Unit,
     onNext: () -> Unit,
 ) {
+    val rankingMode = mode == GameMode.EMBEDDING_RANKING
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 12.dp)
-                .padding(bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(bottom = 68.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            GameTopBar("Vector / Result", "${vectors.firstOrNull()?.size ?: 0}D → 3D MDS", Purple, onBack)
+            GameTopBar("${mode.shortTitle} / RESULT", "COSINE → 3D", Purple, onBack)
             ScoreHud(round, score, streak, Purple)
 
-            ResultHero(
-                rank = answerRank,
-                points = rewardPoints,
-                streak = streak,
-                accent = Purple,
-                mode = "VECTOR",
-                answer = choices.getOrElse(bestIndex) { "?" },
-                selected = choices.getOrElse(selectedIndex) { "?" },
-            )
+            if (rankingMode) {
+                CompactResultPanel(
+                    title = "ORDER MATCH",
+                    headline = "$orderAccuracy% PAIRWISE",
+                    detailLeft = choices.getOrElse(nearestOrder.firstOrNull() ?: 0) { "?" },
+                    detailRight = userOrder.firstOrNull()?.let { choices.getOrElse(it) { "?" } } ?: "—",
+                    points = rewardPoints,
+                    accent = Purple,
+                    success = orderAccuracy == 100,
+                )
+            } else {
+                CompactResultPanel(
+                    title = if (answerRank == 0) "VECTOR LOCK" else "MODEL REVEAL",
+                    headline = if (answerRank == 0) "CORRECT" else "RANK ${answerRank + 1}",
+                    detailLeft = choices.getOrElse(bestIndex) { "?" },
+                    detailRight = selectedIndex?.let { choices.getOrElse(it) { "?" } } ?: "—",
+                    points = rewardPoints,
+                    accent = Purple,
+                    success = answerRank == 0,
+                )
+            }
 
-            if (live && liveResult) LiveBadge("VERIFIED LIVE  //  DEMO SCORE TABLE NOT USED")
+            if (live && liveResult) {
+                Text("VERIFIED LIVE / REAL COSINE SCORES", color = Green, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 0.8.sp)
+            }
 
             VectorCloud(
                 labels = listOf(target) + choices,
                 points = MdsProjector.project(vectors),
                 scores = listOf(1f) + scores,
+                height = 220.dp,
             )
 
-            GlassPanel(accent = Purple, padding = 16.dp) {
+            GlassPanel(accent = Purple, padding = 11.dp) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("COSINE RANK", color = Purple, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                    Text("TARGET / $target", color = TextDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("NEAREST → FARTHEST", color = Purple, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                    Text("TARGET / $target", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 }
-                ranking.forEachIndexed { rank, i ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${(rank + 1).toString().padStart(2, '0')}  ${choices[i]}", color = if (rank == 0) Green else TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${"%.3f".format(scores[i])}", color = if (rank == 0) Green else TextSub, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    nearestOrder.forEachIndexed { rank, index ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("#${rank + 1}", color = if (rank == 0) Green else TextDim, fontSize = 7.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                choices.getOrElse(index) { "?" },
+                                color = if (rank == 0) Green else TextMain,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text("%.2f".format(scores.getOrElse(index) { 0f }), color = TextDim, fontSize = 7.sp)
+                        }
                     }
                 }
             }
         }
 
         PrimaryAction(
-            text = "NEXT VECTOR  →",
+            text = "RANDOM NEXT  →",
             accent = Purple,
             onClick = onNext,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 18.dp, vertical = 12.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 9.dp),
         )
     }
 }
