@@ -4,6 +4,30 @@ All notable changes to AI VECTOR GAME are recorded here.
 
 The project follows Semantic Versioning.
 
+## [0.5.0] - 2026-08-25
+
+### Added
+
+- Persistent LIGHT / DARK theme switch on the home screen.
+- Dedicated light palette for backgrounds, panels, text hierarchy, borders, and accent colors.
+- Theme-aware Android status/navigation bar icon appearance.
+- Position-by-position comparison for Embedding and Logit RANKING result screens.
+
+### Changed
+
+- Increased global typography scale and raised key title/HUD/candidate/result text sizes.
+- Enlarged RANKING selected-order slots from 46dp to 62dp and added explicit line height so Japanese glyphs are no longer clipped.
+- Single-answer result cards now show large `✓ CORRECT` or `✕ WRONG` verdicts and color the player's answer independently.
+- Ranking results now distinguish `PERFECT ORDER` from `PARTIAL MATCH` and keep pairwise accuracy visible.
+- Vector Cloud labels and node accents were strengthened for better readability, including when the surrounding UI is in LIGHT mode.
+- Filled action-button foreground colors now adapt to the active theme.
+
+### Upgrade
+
+- Version increased to `0.5.0` (`versionCode 5`).
+- Package name remains `com.aivectorgame.app`.
+- Uses the same stable development signature as v0.2.0-v0.4.0, so v0.4.0 can update directly without uninstalling or deleting downloaded models.
+
 ## [0.4.0] - 2026-08-25
 
 ### Added
