@@ -111,15 +111,39 @@ bool load_model(const std::string & path, llama_model *& slot) {
     return true;
 }
 
-std::vector<llama_token> tokenize(const llama_vocab * vocab, const std::string & text) {
-    int32_t count = llama_tokenize(vocab, text.c_str(), static_cast<int32_t>(text.size()), nullptr, 0, true, true);
+std::vector<llama_token> tokenize_text(
+    const llama_vocab * vocab,
+    const std::string & text,
+    bool add_special
+) {
+    int32_t count = llama_tokenize(
+        vocab,
+        text.c_str(),
+        static_cast<int32_t>(text.size()),
+        nullptr,
+        0,
+        add_special,
+        true
+    );
     if (count >= 0) return {};
     count = -count;
     std::vector<llama_token> tokens(static_cast<size_t>(count));
-    int32_t written = llama_tokenize(vocab, text.c_str(), static_cast<int32_t>(text.size()), tokens.data(), count, true, true);
+    int32_t written = llama_tokenize(
+        vocab,
+        text.c_str(),
+        static_cast<int32_t>(text.size()),
+        tokens.data(),
+        count,
+        add_special,
+        true
+    );
     if (written < 0) return {};
     tokens.resize(static_cast<size_t>(written));
     return tokens;
+}
+
+std::vector<llama_token> tokenize(const llama_vocab * vocab, const std::string & text) {
+    return tokenize_text(vocab, text, true);
 }
 
 struct Candidate {
@@ -127,6 +151,12 @@ struct Candidate {
     float logit;
     float prob;
     std::string piece;
+};
+
+struct SequenceScore {
+    float sum_logprob;
+    float avg_logprob;
+    int token_count;
 };
 
 std::string predict_json(const std::string & prompt, int top_k) {
@@ -203,6 +233,129 @@ std::string predict_json(const std::string & prompt, int top_k) {
              << ",\"piece\":\"" << json_escape(c.piece) << "\""
              << ",\"logit\":" << c.logit
              << ",\"prob\":" << c.prob << '}';
+    }
+    json << ']';
+    return json.str();
+}
+
+bool score_one_continuation(
+    const std::string & prompt,
+    const std::string & continuation,
+    SequenceScore & out
+) {
+    if (!g_causal_model) {
+        set_error("Causal model is not loaded");
+        return false;
+    }
+
+    const llama_vocab * vocab = llama_model_get_vocab(g_causal_model);
+    auto prompt_tokens = tokenize_text(vocab, prompt, true);
+    auto continuation_tokens = tokenize_text(vocab, continuation, false);
+    if (prompt_tokens.empty()) {
+        set_error("Prompt tokenization returned no tokens");
+        return false;
+    }
+    if (continuation_tokens.empty()) {
+        set_error("Continuation tokenization returned no tokens");
+        return false;
+    }
+
+    std::vector<llama_token> tokens;
+    tokens.reserve(prompt_tokens.size() + continuation_tokens.size());
+    tokens.insert(tokens.end(), prompt_tokens.begin(), prompt_tokens.end());
+    tokens.insert(tokens.end(), continuation_tokens.begin(), continuation_tokens.end());
+
+    llama_context_params cp = llama_context_default_params();
+    cp.n_ctx = std::max<uint32_t>(512, static_cast<uint32_t>(tokens.size() + 16));
+    cp.n_batch = static_cast<uint32_t>(tokens.size());
+    cp.n_ubatch = cp.n_batch;
+    cp.n_threads = 4;
+    cp.n_threads_batch = 4;
+    cp.no_perf = true;
+
+    llama_context * ctx = llama_init_from_model(g_causal_model, cp);
+    if (!ctx) {
+        set_error("Could not create continuation scoring context");
+        return false;
+    }
+
+    llama_batch batch = llama_batch_init(static_cast<int32_t>(tokens.size()), 0, 1);
+    batch.n_tokens = static_cast<int32_t>(tokens.size());
+    for (int32_t i = 0; i < batch.n_tokens; ++i) {
+        batch.token[i] = tokens[static_cast<size_t>(i)];
+        batch.pos[i] = i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i][0] = 0;
+        // Request logits at every position because each continuation token is scored
+        // from the preceding position's vocabulary distribution.
+        batch.logits[i] = true;
+    }
+
+    const int decode_status = llama_decode(ctx, batch);
+    if (decode_status != 0) {
+        llama_batch_free(batch);
+        llama_free(ctx);
+        set_error("llama_decode failed while scoring continuation: " + std::to_string(decode_status));
+        return false;
+    }
+
+    const int n_vocab = llama_vocab_n_tokens(vocab);
+    double sum_logprob = 0.0;
+    for (size_t j = 0; j < continuation_tokens.size(); ++j) {
+        const int predictor_position = static_cast<int>(prompt_tokens.size() + j - 1);
+        const float * logits = llama_get_logits_ith(ctx, predictor_position);
+        if (!logits) {
+            llama_batch_free(batch);
+            llama_free(ctx);
+            set_error("Missing intermediate logits while scoring continuation");
+            return false;
+        }
+
+        float max_logit = -INFINITY;
+        for (int token = 0; token < n_vocab; ++token) {
+            max_logit = std::max(max_logit, logits[token]);
+        }
+        double denom = 0.0;
+        for (int token = 0; token < n_vocab; ++token) {
+            denom += std::exp(static_cast<double>(logits[token] - max_logit));
+        }
+
+        const llama_token target = continuation_tokens[j];
+        const double logprob = static_cast<double>(logits[target] - max_logit) - std::log(denom);
+        sum_logprob += logprob;
+    }
+
+    llama_batch_free(batch);
+    llama_free(ctx);
+
+    out.sum_logprob = static_cast<float>(sum_logprob);
+    out.avg_logprob = static_cast<float>(sum_logprob / static_cast<double>(continuation_tokens.size()));
+    out.token_count = static_cast<int>(continuation_tokens.size());
+    return true;
+}
+
+std::string score_continuations_json(
+    const std::string & prompt,
+    const std::vector<std::string> & continuations
+) {
+    std::vector<SequenceScore> scores;
+    scores.reserve(continuations.size());
+    for (const auto & continuation : continuations) {
+        SequenceScore score{};
+        if (!score_one_continuation(prompt, continuation, score)) {
+            return "[]";
+        }
+        scores.push_back(score);
+    }
+
+    std::ostringstream json;
+    json << '[';
+    for (size_t i = 0; i < scores.size(); ++i) {
+        if (i) json << ',';
+        const auto & score = scores[i];
+        json << "{\"sum_logprob\":" << score.sum_logprob
+             << ",\"avg_logprob\":" << score.avg_logprob
+             << ",\"tokens\":" << score.token_count << '}';
     }
     json << ']';
     return json.str();
@@ -302,6 +455,36 @@ Java_com_aivectorgame_app_ai_NativeEngine_nativePredictTopTokens(JNIEnv * env, j
     std::lock_guard<std::mutex> lock(g_mutex);
     g_last_error.clear();
     const std::string result = predict_json(jstring_to_utf8(env, prompt), std::max(1, static_cast<int>(top_k)));
+    return env->NewStringUTF(result.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_aivectorgame_app_ai_NativeEngine_nativeScoreContinuations(
+    JNIEnv * env,
+    jobject,
+    jstring prompt,
+    jobjectArray candidates
+) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_last_error.clear();
+
+    std::vector<std::string> values;
+    if (candidates) {
+        const jsize count = env->GetArrayLength(candidates);
+        values.reserve(static_cast<size_t>(count));
+        for (jsize i = 0; i < count; ++i) {
+            auto value = static_cast<jstring>(env->GetObjectArrayElement(candidates, i));
+            values.push_back(jstring_to_utf8(env, value));
+            env->DeleteLocalRef(value);
+        }
+    }
+
+    if (values.empty()) {
+        set_error("No continuation candidates supplied");
+        return env->NewStringUTF("[]");
+    }
+
+    const std::string result = score_continuations_json(jstring_to_utf8(env, prompt), values);
     return env->NewStringUTF(result.c_str());
 }
 
