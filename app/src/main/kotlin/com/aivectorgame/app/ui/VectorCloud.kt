@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aivectorgame.app.math.MdsProjector
@@ -38,7 +39,12 @@ import kotlin.math.min
 import kotlin.math.sin
 
 @Composable
-internal fun VectorCloud(labels: List<String>, points: List<MdsProjector.Point3>, scores: List<Float>) {
+internal fun VectorCloud(
+    labels: List<String>,
+    points: List<MdsProjector.Point3>,
+    scores: List<Float>,
+    height: Dp = 430.dp,
+) {
     var rotX by remember { mutableFloatStateOf(-0.30f) }
     var rotY by remember { mutableFloatStateOf(0.48f) }
     var zoom by remember { mutableFloatStateOf(1f) }
@@ -49,7 +55,7 @@ internal fun VectorCloud(labels: List<String>, points: List<MdsProjector.Point3>
     Box(
         Modifier
             .fillMaxWidth()
-            .height(430.dp)
+            .height(height)
             .background(
                 Brush.linearGradient(
                     listOf(Color(0xFF080C14), Color(0xFF060910), Color(0xFF0B0A15))
