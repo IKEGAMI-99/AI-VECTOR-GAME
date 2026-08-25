@@ -13,8 +13,8 @@ android {
         applicationId = "com.aivectorgame.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -39,8 +39,6 @@ android {
         }
     }
 
-    // Stable development signing is intentional for sideload updates from GitHub.
-    // This is NOT a Play Store production signing key.
     signingConfigs {
         create("stableDev") {
             storeFile = file("keys/ai-vector-game-dev.jks")
