@@ -18,6 +18,7 @@ The project follows Semantic Versioning.
 
 - Version increased to `0.5.1` (`versionCode 6`).
 - Package name and stable development signature are unchanged, so v0.5.0 can update directly without deleting downloaded models.
+- Pre-release feature-branch CI passed Android Lint, debug/release APK builds, JNI verification, APK structure checks, and signature verification before release to main.
 
 ## [0.5.0] - 2026-08-25
 
