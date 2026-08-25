@@ -13,8 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-
-private enum class Screen { HOME, EMBEDDING, LOGIT }
+import com.aivectorgame.app.game.GameFamily
+import com.aivectorgame.app.game.GameMode
 
 @Composable
 fun AiVectorGameApp() {
@@ -34,14 +34,21 @@ fun AiVectorGameApp() {
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
             ) {
-                var screen by remember { mutableStateOf(Screen.HOME) }
-                when (screen) {
-                    Screen.HOME -> HomeScreen(
-                        onEmbedding = { screen = Screen.EMBEDDING },
-                        onLogit = { screen = Screen.LOGIT },
-                    )
-                    Screen.EMBEDDING -> EmbeddingGame(onBack = { screen = Screen.HOME })
-                    Screen.LOGIT -> LogitGame(onBack = { screen = Screen.HOME })
+                var mode by remember { mutableStateOf<GameMode?>(null) }
+                val activeMode = mode
+                if (activeMode == null) {
+                    HomeScreen(onMode = { mode = it })
+                } else {
+                    when (activeMode.family) {
+                        GameFamily.EMBEDDING -> EmbeddingGame(
+                            mode = activeMode,
+                            onBack = { mode = null },
+                        )
+                        GameFamily.LOGIT -> LogitGame(
+                            mode = activeMode,
+                            onBack = { mode = null },
+                        )
+                    }
                 }
             }
         }
